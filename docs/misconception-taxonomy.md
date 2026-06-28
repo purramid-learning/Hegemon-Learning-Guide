@@ -39,12 +39,12 @@ Naming a quadrant is a separate skill from plotting a point: it asks the student
 
 The correct scheme starts at the **top-right** corner (+x, +y = Quadrant I) and counts **counterclockwise**. Two independent things can go wrong — the starting corner and the direction — producing the three errors below. The map from a location's corner to the number the student assigns:
 
-| Corner (signs) | Correct | MC-04a | MC-04b | MC-04c |
-|----------------|:------:|:------:|:------:|:------:|
-| top-right (+, +) | I | IV | I | II |
-| top-left (−, +) | II | I | IV | I |
-| bottom-left (−, −) | III | II | III | IV |
-| bottom-right (+, −) | IV | III | II | III |
+| Corner (signs) | Correct | MC-04a | MC-04b | MC-04c | MC-04d |
+|----------------|:------:|:------:|:------:|:------:|:------:|
+| top-right (+, +) | I | IV | I | II | II |
+| top-left (−, +) | II | I | IV | I | I |
+| bottom-left (−, −) | III | II | III | IV | III |
+| bottom-right (+, −) | IV | III | II | III | IV |
 
 ### MC-04a — Incorrect Starting Point
 **Misconception:** Student counts counterclockwise (correct direction) but begins in the wrong corner — numbering the **top-left** as Quadrant I, the way an English reader starts at the top-left of a page. Every quadrant's number shifts one position around the plane.
@@ -60,6 +60,11 @@ The correct scheme starts at the **top-right** corner (+x, +y = Quadrant I) and 
 **Misconception:** Both errors at once — student begins at the top-left **and** counts clockwise. Relative to the correct scheme, the top corners swap numbers (I↔II) and the bottom corners swap (III↔IV).
 **Diagnostic:** Named quadrants match the MC-04c column — tell-tale single responses: a top-right location named II, or a bottom-left location named IV.
 **Scaffolding goal:** A compound error — scaffold one knob at a time (contract rule 5), never both in one prompt. First surface the starting corner (Quadrant I is the all-positive corner); confirm; *then* surface the direction (the next number sits where x flips sign but y holds). The assessment-mode worked example in `scaffolding-contract.md` is the template sequence.
+
+### MC-04d — Row-by-Row (Raster) Numbering
+**Misconception:** Student numbers quadrants in reading order — top-left to top-right, then bottom-left to bottom-right (TL=I, TR=II, BL=III, BR=IV) — rather than starting at the all-positive corner and counting counterclockwise. This is a schema mismatch, not a rotation error: the two-knob (start corner + direction) model that produces MC-04a/b/c cannot generate the raster pattern, so it sits outside that family.
+**Diagnostic:** Named quadrants match the MC-04d column. Tell-tale single response: a top-right location named II (shared with MC-04c — a bottom-corner response is needed to separate them, since MC-04c assigns BL=IV/BR=III while MC-04d assigns BL=III/BR=IV). Note that MC-04d matches the correct scheme on both bottom corners; a student with this error looks correct on any bottom-corner or axis probe and can only be identified from a top-corner response.
+**Scaffolding goal:** A schema-mismatch error — scaffold start corner and direction, one at a time (contract rule 5), as for MC-04c. First surface where Quadrant I is (the all-positive corner, top-right — not top-left); confirm; then surface the direction of counting. The assessment-mode worked example in `scaffolding-contract.md` is the template sequence.
 
 ## MC-05 — Reflection Axis Confusion *(reserved)*
 
@@ -86,7 +91,12 @@ Out of scope for this lesson — it introduces signs and quadrants but never ask
 
 **Evaluation order (first match wins).** The plotting codes run on the plotted coordinate, most specific first: MC-01 → MC-07 → MC-08 → MC-06 → MC-02 → MC-03. MC-01 precedes the sign rules so a swapped point isn't misread as a direction error; MC-06 (both magnitudes exact) precedes MC-02 (looser sign error) so the scaffolding can affirm distance first. The quadrant-numbering codes (MC-04a/b/c) are a **separate detector** keyed to a named quadrant — not part of this chain.
 
-**MC-04 needs a naming task, and usually more than one response.** The click-to-plot grid yields only a coordinate, so MC-04a/b/c cannot fire unless the activity asks the student to *name* a quadrant — and that judgment is independent of whether they can plot. A single naming is often ambiguous: for a top-right location, both the correct scheme and MC-04b give "I." Two namings in **adjacent** corners resolve it — adjacent corners always take consecutive numerals, which pins the direction; a top-right and a top-left response together, for instance, separate all three errors from the correct scheme. A **diagonal** pair does *not* (it leaves the direction ambiguous), so reconstructing the scheme needs either two *adjacent* namings or **≥3 distinct-quadrant** namings (the fourth corner is then forced). Keep MC-04 out of the live set until a quadrant-naming interaction exists.
+**MC-04 needs a naming task, and usually more than one response.** The click-to-plot grid yields only a coordinate, so MC-04a–d cannot fire unless the activity asks the student to *name* a quadrant. A single naming is often ambiguous: a top-right location named "I" fits both the correct scheme and MC-04b. With five possible schemes (correct + MC-04a/b/c/d), probe choice matters:
+- **Left or right column** (TL+BL or TR+BR): either pair uniquely identifies all five schemes. These are the recommended probe pairs.
+- **Top row** (TR+TL): cannot separate MC-04c from MC-04d — both assign TL=I, TR=II.
+- **Bottom row** (BL+BR): cannot separate the correct scheme from MC-04d — both assign BL=III, BR=IV.
+- **Diagonal pairs** (TR+BL or TL+BR): insufficient — TR+BL cannot separate the correct scheme from MC-04b.
+- **≥3 distinct-quadrant** probes always resolve the scheme (the fourth corner is forced). Keep MC-04 out of the live set until a quadrant-naming interaction exists.
 
 **Fallback.** If no rule matches, route to an unclassified handler so Claude still responds Socratically (e.g., "walk me through how you placed that point") rather than asserting a misconception it can't substantiate. Deterministic detection will not cover every stray plot.
 

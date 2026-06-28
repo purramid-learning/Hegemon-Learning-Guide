@@ -39,17 +39,27 @@ A JS module that reads all `hg-marker` elements the student has scrolled past at
 
 ---
 
-## 6. Firebase Cloud Function
+## ✅ 6. Firebase Cloud Function
 The proxy layer that accepts the misconception code, marker context, and conversation history, then calls the Claude API and returns the scaffolding response. The API key never leaves this layer.
 
-**Artifacts:** `functions/index.js`, `functions/package.json`
+**Artifacts:** `functions/index.js`, `functions/package.json`, `functions/.gitignore`, `firebase.json`, `.firebaserc`
+
+**Setup before first deploy:**
+1. Create a Firebase project and update `.firebaserc` with the project ID.
+2. `firebase functions:secrets:set ANTHROPIC_API_KEY` — paste the key when prompted.
+3. `npm install` inside `functions/`.
+4. `firebase deploy --only functions` (or use the emulator for local dev).
+
+**Note:** The system prompt in `functions/index.js` is a placeholder. Step 7 replaces it with the full behavioral prompt.
 
 ---
 
 ## 7. Claude System Prompt
 Write the Claude system prompt that drives scaffolding response generation. The behavioral rules and output contract are already defined in `docs/scaffolding-contract.md`; this step translates those rules into a prompt and tests it against each MC code (including compound codes) to verify Socratic quality and correct one-at-a-time sequencing before the demo.
 
-**Artifact:** system prompt (to be created and tested in this step); `docs/scaffolding-contract.md` (input reference, already complete)
+**Artifacts:** `functions/index.js` (`SCAFFOLDING_RULES` constant — replaces step 6 placeholder), `docs/scaffolding-prompt-tests.md` (15 structured test cases)
+
+**Testing:** Run the 15 cases in `docs/scaffolding-prompt-tests.md` against the prompt via claude.ai (custom system prompt) or the Firebase emulator. Record pass/fail per case before proceeding to step 8. Minimum bar: all 15 pass, with particular attention to Tests 06–07 (MC-04c compound sequencing) and Test 14 (charitable interpretation).
 
 ---
 

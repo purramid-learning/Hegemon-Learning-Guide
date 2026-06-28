@@ -25,12 +25,12 @@ This is the **master** taxonomy (the superset). A lesson taxonomy such as `misco
 
 **Shared misconception:** Naming a quadrant is a separate skill from plotting a point — it applies the I–IV numbering scheme to a location, independent of whether any point was plotted correctly. The input is a **named quadrant** (a Roman numeral), not a plotted coordinate. The correct scheme starts at the top-right (+x, +y = I) and counts counterclockwise. Two independent things can go wrong — the **starting corner** and the **direction** — which is exactly what the sub-codes separate.
 
-| Corner (signs) | Correct | MC-04a | MC-04b | MC-04c |
-|----------------|:------:|:------:|:------:|:------:|
-| top-right (+, +) | I | IV | I | II |
-| top-left (−, +) | II | I | IV | I |
-| bottom-left (−, −) | III | II | III | IV |
-| bottom-right (+, −) | IV | III | II | III |
+| Corner (signs) | Correct | MC-04a | MC-04b | MC-04c | MC-04d |
+|----------------|:------:|:------:|:------:|:------:|:------:|
+| top-right (+, +) | I | IV | I | II | II |
+| top-left (−, +) | II | I | IV | I | I |
+| bottom-left (−, −) | III | II | III | IV | III |
+| bottom-right (+, −) | IV | III | II | III | IV |
 
 ### MC-04a — Incorrect Starting Point
 **Misconception:** Counts counterclockwise (correct direction) but begins in the wrong corner — numbering the top-left as Quadrant I, the way an English reader starts at the top-left of a page.
@@ -44,8 +44,15 @@ This is the **master** taxonomy (the superset). A lesson taxonomy such as `misco
 
 ### MC-04c — Incorrect Start and Clockwise
 **Misconception:** Both errors at once — begins top-left **and** counts clockwise. The top corners swap numbers (I↔II) and the bottom corners swap (III↔IV).
-**Diagnostic:** Named quadrants match the MC-04c column (tell-tale: a top-right location named II, or a bottom-left location named IV).
+**Diagnostic:** Named quadrants match the MC-04c column (tell-tale: a top-right location named II, or a bottom-left location named IV). A bottom-corner response distinguishes MC-04c (BL=IV, BR=III) from MC-04d (BL=III, BR=IV) — they share the same top-row assignments.
 **Scaffolding goal:** A compound error — scaffold one knob at a time (contract rule 5), never both in one prompt. First surface the starting corner (Quadrant I is the all-positive corner); confirm; *then* surface the direction. The assessment-mode worked example in `scaffolding-contract.md` is the template sequence.
+
+### MC-04d — Row-by-Row (Raster) Numbering
+**Misconception:** Student numbers quadrants in reading order — top-left to top-right, then bottom-left to bottom-right (TL=I, TR=II, BL=III, BR=IV) — rather than starting at the all-positive corner and counting counterclockwise. This is a schema mismatch, not a rotation error: the two-knob (start corner + direction) model that produces MC-04a/b/c cannot generate the raster pattern, so it sits outside that family.
+**Diagnostic:** Named quadrants match the MC-04d column. Tell-tale: top-right location named II (shared with MC-04c — a bottom-corner response separates them, since MC-04c assigns BL=IV/BR=III while MC-04d assigns BL=III/BR=IV). MC-04d matches the correct scheme on both bottom corners, so bottom-corner probes alone cannot detect it.
+**Scaffolding goal:** A schema-mismatch error — scaffold start corner and direction, one at a time (contract rule 5), as for MC-04c. First surface where Quadrant I is (the all-positive corner, top-right); confirm; then surface the direction of counting.
+
+**Detection probe design (applies to all MC-04 sub-codes).** A single naming is often ambiguous. With five possible schemes (correct + MC-04a/b/c/d), probe choice matters: the left column (TL+BL) or right column (TR+BR) each uniquely identify all five schemes; the top row (TR+TL) cannot separate MC-04c from MC-04d; the bottom row (BL+BR) cannot separate the correct scheme from MC-04d; diagonal pairs leave at least one pair of schemes indistinguishable. Alternatively, ≥3 distinct-quadrant probes always resolve the scheme (the fourth corner is forced).
 
 ## MC-05 — Reflection Axis Confusion
 **Misconception:** When reflecting a point across a specified axis, student reflects across the other axis instead.
