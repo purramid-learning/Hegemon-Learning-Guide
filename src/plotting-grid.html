@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plotting Practice · The Coordinate Plane</title>
+<!--
+  Hegemon Learning Guide · interactive plotting grid
+  Student-facing entry point and the source of all detection inputs.
+
+  Scope of THIS page (locked with Joe):
+    · clickable / keyboard-navigable grid, integers -5..5
+    · a target the student is asked to plot, drawn from a coverage sequence
+    · a submit mechanism that CAPTURES + EMITS the result
+    · NO misconception detection here, NO Claude call here — see recordSubmission()
+
+  Design contract inherited from coordinate-plane-lesson.html:
+    x is coral, y is teal, structure in blueprint navy, graph-paper ground.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#16263d;
+    --ink-soft:#54647a;
+    --paper:#f6f9fc;
+    --surface:#ffffff;
+    --line:#e6edf4;
+    --grid:#dbe6f1;
+    --x:#e2603a;
+    --x-tint:#fbece6;
+    --y:#0e9488;
+    --y-tint:#e3f3f1;
+    --focus:#2f6df0;
+    --font-display:'Space Grotesk',system-ui,sans-serif;
+    --font-body:'Inter',system-ui,sans-serif;
+    --font-mono:'Space Mono',ui-monospace,monospace;
+    --maxw:760px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    font-family:var(--font-body);
+    color:var(--ink);
+    background-color:var(--paper);
+    background-image:
+      linear-gradient(var(--grid) 1px,transparent 1px),
+      linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:28px 28px;
+    background-position:center top;
+    line-height:1.65;
+    font-size:17px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 22px}
+
+  /* ---------- header ---------- */
+  header.masthead{
+    background:var(--ink);
+    color:#fff;
+    border-bottom:3px solid var(--x);
+  }
+  .masthead .wrap{padding-top:30px;padding-bottom:38px}
+  .crumb{
+    font-family:var(--font-mono);
+    font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;
+    color:#9fb2c9;margin:0 0 18px;
+  }
+  h1.title{
+    font-family:var(--font-display);font-weight:700;
+    font-size:clamp(1.9rem,5.5vw,2.7rem);line-height:1.05;
+    margin:0 0 14px;letter-spacing:-.01em;
+  }
+  .title .c-x{color:var(--x)}
+  .title .c-y{color:var(--y)}
+  .lede{color:#cdd8e6;font-size:1.05rem;max-width:50ch;margin:0}
+
+  /* ---------- practice card ---------- */
+  main{padding:0 0 10px}
+  .panel{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:24px 26px;
+    margin:-26px auto 0;
+    box-shadow:0 14px 30px -22px rgba(22,38,61,.4);
+  }
+
+  .taskbar{
+    display:flex;align-items:baseline;justify-content:space-between;
+    gap:14px;flex-wrap:wrap;margin:0 0 4px;
+  }
+  .progress{
+    font-family:var(--font-mono);font-size:.72rem;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--ink-soft);margin:0;
+  }
+  .prompt{
+    font-family:var(--font-display);font-weight:700;
+    font-size:clamp(1.25rem,3.4vw,1.6rem);line-height:1.2;
+    margin:6px 0 2px;letter-spacing:-.01em;
+  }
+  .pair{font-family:var(--font-mono);font-weight:700;white-space:nowrap}
+  .pair .x{color:var(--x)}
+  .pair .y{color:var(--y)}
+  .hint{color:var(--ink-soft);font-size:.92rem;margin:2px 0 16px}
+
+  /* ---------- grid ---------- */
+  .stage{text-align:center}
+  .plane-svg{
+    width:100%;height:auto;max-width:404px;display:block;margin:0 auto;
+    touch-action:manipulation;
+  }
+  .plane-svg:focus-visible{outline:3px solid var(--focus);outline-offset:4px;border-radius:8px}
+
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .axis{stroke:var(--ink);stroke-width:2}
+  .tick{font-family:var(--font-mono);font-size:11px;fill:var(--ink-soft)}
+  .axis-label{font-family:var(--font-display);font-size:15px;font-weight:700}
+  .hit{fill:transparent;cursor:pointer;transition:fill .12s}
+  .hit:hover{fill:var(--y-tint)}
+  .locked .hit{cursor:default}
+  .locked .hit:hover{fill:transparent}
+  .cursor-ring{fill:none;stroke:var(--focus);stroke-width:2;opacity:0;pointer-events:none;transition:opacity .12s}
+  .marker{fill:var(--ink);stroke:#fff;stroke-width:2;pointer-events:none;opacity:0;transition:opacity .12s}
+
+  /* ---------- status + controls ---------- */
+  .status{
+    min-height:1.3em;margin:14px 0 0;font-size:.95rem;font-weight:600;
+    color:var(--ink-soft);text-align:center;
+  }
+  .controls{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:18px 0 0}
+  .btn{
+    font-family:var(--font-display);font-weight:700;font-size:1rem;
+    border:none;border-radius:11px;padding:13px 28px;cursor:pointer;
+    transition:transform .12s,background .15s,opacity .15s;
+  }
+  .btn:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+  .btn-primary{background:var(--x);color:#fff}
+  .btn-primary:hover:not(:disabled){background:#cf5230;transform:translateY(-1px)}
+  .btn-primary:disabled{opacity:.4;cursor:default}
+  .btn-next{background:var(--ink);color:#fff;display:none}
+  .btn-next:hover{background:#22384f;transform:translateY(-1px)}
+
+  /* ---------- emit readout (capture-only) ---------- */
+  .readout{
+    display:none;margin:20px 0 0;border:1px solid var(--line);
+    border-radius:12px;overflow:hidden;background:var(--paper);
+  }
+  .readout .rohead{
+    font-family:var(--font-mono);font-size:.68rem;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--ink-soft);
+    padding:9px 16px;border-bottom:1px solid var(--line);background:var(--surface);
+  }
+  .readout .robody{padding:13px 16px;font-size:.95rem}
+  .readout .roline{font-family:var(--font-mono);font-size:.92rem}
+  .readout .rometa{color:var(--ink-soft);font-size:.85rem;margin:6px 0 0}
+
+  /* ---------- done ---------- */
+  .done{display:none;text-align:center;padding:14px 0 4px}
+  .done h2{font-family:var(--font-display);font-size:1.4rem;margin:0 0 6px}
+  .done p{color:var(--ink-soft);margin:0 0 18px}
+
+  footer{padding:30px 0 56px;text-align:center}
+  footer p{font-family:var(--font-mono);font-size:.74rem;color:var(--ink-soft);margin:0}
+
+  @media (max-width:560px){ body{font-size:16px} .panel{margin-top:-18px} }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none!important;scroll-behavior:auto!important}
+    .btn-primary:hover:not(:disabled),.btn-next:hover{transform:none}
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <p class="crumb">Math · The Coordinate Plane</p>
+    <h1 class="title">Plotting <span class="c-x">practice</span></h1>
+    <p class="lede">Read each point, then click the grid where it belongs. Move it as many times as you like — it's only recorded when you submit.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="panel" aria-label="Plotting practice">
+
+    <!-- live task -->
+    <div id="task">
+      <div class="taskbar">
+        <p class="progress" id="progress">Point 1 of 6</p>
+      </div>
+      <p class="prompt">Plot the point <span id="target"></span></p>
+      <p class="hint">Click an intersection on the grid. Or focus the grid and use arrow keys, then Enter.</p>
+
+      <div class="stage">
+        <svg id="grid" class="plane-svg" tabindex="0" role="application"
+             aria-label="Coordinate plane from negative 5 to 5. Click an intersection to place your point."></svg>
+      </div>
+
+      <p class="status" id="status" role="status">No point placed yet.</p>
+
+      <div class="controls">
+        <button class="btn btn-primary" id="submit" disabled>Submit point</button>
+        <button class="btn btn-next" id="next">Next point</button>
+      </div>
+
+      <!-- capture-only emit; reveals what was recorded, never whether it was right -->
+      <div class="readout" id="readout" aria-live="polite">
+        <div class="rohead">Captured for detection</div>
+        <div class="robody">
+          <div class="roline" id="ro-coords"></div>
+          <p class="rometa">Saved to the submission log. Misconception detection runs downstream — not on this page.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- end state -->
+    <div class="done" id="done">
+      <h2>All points captured.</h2>
+      <p id="done-count"></p>
+      <button class="btn btn-primary" id="restart">Start over</button>
+    </div>
+
+  </section>
+</main>
+
+<footer>
+  <div class="wrap"><p>Coordinate Plane · plotting practice · input source for misconception detection</p></div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ----------------------------------------------------------------
+     Target sequence — chosen so every live MC code is REACHABLE.
+       (3, 2)   Q1, x!=y, nonzero ....... MC-01, MC-08, MC-03
+       (-4, 3)  Q2, negative x .......... MC-02/MC-06 (x), MC-01, MC-08, MC-03
+       (2, -5)  Q4, negative y .......... MC-02/MC-06 (y), MC-01, MC-08, MC-03
+       (0, 4)   on the y-axis ........... MC-07
+       (-3, 0)  on the x-axis ........... MC-07
+       (-2, -3) Q3, both negative ....... MC-01, MC-02/MC-06 (both), MC-08, MC-03
+     Covers MC-01,02,03,06,07,08. MC-04 needs a naming task; MC-05 out of scope.
+  ---------------------------------------------------------------- */
+  var TARGETS = [
+    {x:3,  y:2 },
+    {x:-4, y:3 },
+    {x:2,  y:-5},
+    {x:0,  y:4 },
+    {x:-3, y:0 },
+    {x:-2, y:-3}
+  ];
+
+  /* ---- geometry ---- */
+  var NS = "http://www.w3.org/2000/svg";
+  var RANGE = 5, U = 34, PAD = 32;
+  var SIZE = RANGE*2*U + PAD*2;
+  var C = PAD + RANGE*U;
+  function X(x){ return C + x*U; }
+  function Y(y){ return C - y*U; }
+  function fmt(n){ return String(n).replace("-", "\u2212"); } // minus sign U+2212
+
+  function svgEl(tag, attrs){
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function txt(el, s){ el.appendChild(document.createTextNode(s)); return el; }
+  function addArrow(svg, x1, y1, x2, y2, color){
+    var ang = Math.atan2(y2-y1, x2-x1), len = 8, spread = 0.5;
+    svg.appendChild(svgEl("path", {
+      d:"M "+x2+" "+y2+
+        " L "+(x2-len*Math.cos(ang-spread))+" "+(y2-len*Math.sin(ang-spread))+
+        " M "+x2+" "+y2+
+        " L "+(x2-len*Math.cos(ang+spread))+" "+(y2-len*Math.sin(ang+spread)),
+      stroke:color,"stroke-width":2,fill:"none","stroke-linecap":"round"}));
+  }
+
+  /* ---- DOM ---- */
+  var svg      = document.getElementById("grid");
+  var elTarget = document.getElementById("target");
+  var elProg   = document.getElementById("progress");
+  var elStatus = document.getElementById("status");
+  var btnSubmit= document.getElementById("submit");
+  var btnNext  = document.getElementById("next");
+  var readout  = document.getElementById("readout");
+  var roCoords = document.getElementById("ro-coords");
+  var elTask   = document.getElementById("task");
+  var elDone   = document.getElementById("done");
+  var doneCount= document.getElementById("done-count");
+  var btnRestart=document.getElementById("restart");
+
+  /* ---- state ---- */
+  var idx = 0;
+  var placed = null;          // {x, y} or null
+  var locked = false;         // current target already submitted
+  var submissions = [];       // capture log
+  var marker, cursorRing;     // persistent svg nodes
+  var cursor = {x:0, y:0};    // keyboard cursor position
+
+  /* ---- build the static grid once ---- */
+  function buildGrid(){
+    svg.setAttribute("viewBox", "0 0 "+SIZE+" "+SIZE);
+
+    for (var i=-RANGE; i<=RANGE; i++){
+      if (i!==0){
+        svg.appendChild(svgEl("line",{x1:X(i),y1:Y(-RANGE),x2:X(i),y2:Y(RANGE),class:"grid-line"}));
+        svg.appendChild(svgEl("line",{x1:X(-RANGE),y1:Y(i),x2:X(RANGE),y2:Y(i),class:"grid-line"}));
+      }
+    }
+    svg.appendChild(svgEl("line",{x1:X(-RANGE),y1:Y(0),x2:X(RANGE),y2:Y(0),class:"axis"}));
+    svg.appendChild(svgEl("line",{x1:X(0),y1:Y(RANGE),x2:X(0),y2:Y(-RANGE),class:"axis"}));
+    addArrow(svg, X(RANGE-1), Y(0), X(RANGE), Y(0), "var(--ink)");
+    addArrow(svg, X(-RANGE+1), Y(0), X(-RANGE), Y(0), "var(--ink)");
+    addArrow(svg, X(0), Y(RANGE-1), X(0), Y(RANGE), "var(--ink)");
+    addArrow(svg, X(0), Y(-RANGE+1), X(0), Y(-RANGE), "var(--ink)");
+
+    for (var j=-RANGE; j<=RANGE; j++){
+      if (j===0) continue;
+      svg.appendChild(txt(svgEl("text",{x:X(j),y:Y(0)+15,"text-anchor":"middle",class:"tick"}), fmt(j)));
+      svg.appendChild(txt(svgEl("text",{x:X(0)-9,y:Y(j)+4,"text-anchor":"end",class:"tick"}), fmt(j)));
+    }
+    svg.appendChild(txt(svgEl("text",{x:X(RANGE)-2,y:Y(0)-9,"text-anchor":"end",class:"axis-label",fill:"var(--x)"}),"x"));
+    svg.appendChild(txt(svgEl("text",{x:X(0)+9,y:Y(RANGE)+4,"text-anchor":"start",class:"axis-label",fill:"var(--y)"}),"y"));
+
+    // clickable lattice points
+    for (var gx=-RANGE; gx<=RANGE; gx++){
+      for (var gy=-RANGE; gy<=RANGE; gy++){
+        var hit = svgEl("circle",{cx:X(gx),cy:Y(gy),r:14,class:"hit"});
+        hit.dataset.x = gx; hit.dataset.y = gy;
+        hit.addEventListener("click", onHit);
+        svg.appendChild(hit);
+      }
+    }
+
+    cursorRing = svgEl("circle",{cx:X(0),cy:Y(0),r:11,class:"cursor-ring"});
+    svg.appendChild(cursorRing);
+    marker = svgEl("circle",{cx:X(0),cy:Y(0),r:7,class:"marker"});
+    svg.appendChild(marker);
+  }
+
+  /* ---- placing a point ---- */
+  function place(gx, gy){
+    if (locked) return;
+    placed = {x:gx, y:gy};
+    marker.setAttribute("cx", X(gx));
+    marker.setAttribute("cy", Y(gy));
+    marker.style.opacity = 1;
+    btnSubmit.disabled = false;
+    elStatus.textContent = "Point placed. Submit when ready.";
+  }
+  function onHit(e){
+    var t = e.currentTarget;
+    place(parseInt(t.dataset.x,10), parseInt(t.dataset.y,10));
+  }
+
+  /* ---- keyboard plotting ---- */
+  function showCursor(){
+    cursorRing.setAttribute("cx", X(cursor.x));
+    cursorRing.setAttribute("cy", Y(cursor.y));
+    cursorRing.style.opacity = 1;
+  }
+  svg.addEventListener("keydown", function(e){
+    if (locked) return;
+    var moved = true;
+    switch(e.key){
+      case "ArrowLeft":  cursor.x = Math.max(-RANGE, cursor.x-1); break;
+      case "ArrowRight": cursor.x = Math.min( RANGE, cursor.x+1); break;
+      case "ArrowUp":    cursor.y = Math.min( RANGE, cursor.y+1); break;
+      case "ArrowDown":  cursor.y = Math.max(-RANGE, cursor.y-1); break;
+      case "Enter":
+      case " ":          place(cursor.x, cursor.y); e.preventDefault(); return;
+      default: moved = false;
+    }
+    if (moved){ e.preventDefault(); showCursor(); }
+  });
+  svg.addEventListener("blur", function(){ cursorRing.style.opacity = 0; });
+
+  /* ----------------------------------------------------------------
+     SUBMIT  →  capture + emit.   This is the seam.
+  ---------------------------------------------------------------- */
+  function recordSubmission(record){
+    submissions.push(record);
+    window.hegemonSubmissions = submissions;   // dev handle
+    console.log("[hegemon] submission", record);
+    showReadout(record);
+
+    /* --- DETECTION SEAM ------------------------------------------------
+       Deterministic misconception detection plugs in HERE, e.g.:
+
+         const code = detectMisconception(record);   // "MC-0x" | null
+         const ctx  = readMarkers();                  // learner-state markers
+         const reply = await callScaffoldingProxy({ code, ctx, history });
+
+       callScaffoldingProxy hits the Firebase Cloud Function, which holds the
+       API key and calls Claude for the Socratic response. None of that runs
+       on this page — this page only produces `record`.
+    ------------------------------------------------------------------- */
+  }
+
+  function showReadout(r){
+    roCoords.innerHTML =
+      "target <span class='pair'>(<span class='x'>"+fmt(r.targetX)+"</span>, <span class='y'>"+fmt(r.targetY)+"</span>)</span>" +
+      "&nbsp;&nbsp;·&nbsp;&nbsp;" +
+      "plotted <span class='pair'>(<span class='x'>"+fmt(r.plottedX)+"</span>, <span class='y'>"+fmt(r.plottedY)+"</span>)</span>";
+    readout.style.display = "block";
+  }
+
+  btnSubmit.addEventListener("click", function(){
+    if (locked || !placed) return;
+    var tgt = TARGETS[idx];
+    recordSubmission({
+      index: idx,
+      targetX: tgt.x, targetY: tgt.y,
+      plottedX: placed.x, plottedY: placed.y
+    });
+    locked = true;
+    svg.classList.add("locked");
+    btnSubmit.disabled = true;
+    elStatus.textContent = "Recorded.";
+    btnNext.textContent = (idx === TARGETS.length-1) ? "Finish" : "Next point";
+    btnNext.style.display = "inline-block";
+    btnNext.focus();
+  });
+
+  /* ---- advance ---- */
+  btnNext.addEventListener("click", function(){
+    if (idx === TARGETS.length-1){ finish(); return; }
+    idx++;
+    loadTarget();
+  });
+
+  function loadTarget(){
+    var t = TARGETS[idx];
+    placed = null;
+    locked = false;
+    cursor = {x:0, y:0};
+    svg.classList.remove("locked");
+    marker.style.opacity = 0;
+    cursorRing.style.opacity = 0;
+    readout.style.display = "none";
+    btnNext.style.display = "none";
+    btnSubmit.disabled = true;
+    elProg.textContent = "Point "+(idx+1)+" of "+TARGETS.length;
+    elTarget.innerHTML =
+      "<span class='pair'>(<span class='x'>"+fmt(t.x)+"</span>, <span class='y'>"+fmt(t.y)+"</span>)</span>";
+    elStatus.textContent = "No point placed yet.";
+  }
+
+  function finish(){
+    elTask.style.display = "none";
+    doneCount.textContent = submissions.length + " of " + TARGETS.length + " points recorded.";
+    elDone.style.display = "block";
+    console.log("[hegemon] all submissions", submissions);
+  }
+
+  btnRestart.addEventListener("click", function(){
+    idx = 0;
+    submissions = [];
+    window.hegemonSubmissions = submissions;
+    elDone.style.display = "none";
+    elTask.style.display = "block";
+    loadTarget();
+    svg.focus();
+  });
+
+  /* ---- go ---- */
+  buildGrid();
+  loadTarget();
+})();
+</script>
+</body>
+</html>

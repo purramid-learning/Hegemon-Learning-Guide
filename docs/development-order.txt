@@ -1,0 +1,19 @@
+HEGEMON LEARNING GUIDE TODO
+
+1. Sample Lesson — Create a sample lesson on coordinate grid instruction
+
+2. Misconceptions — Identify common misconceptions in coordinate instruction
+
+3. Interactive plotting grid — a standalone HTML page with a clickable coordinate grid (−5..5), a target point display, and a submit mechanism. This is the student-facing entry point and the source of all detection inputs. Nothing else can be tested without it.
+
+4. Misconception detection logic — a JavaScript module that takes (target_x, target_y, plotted_x, plotted_y) and returns a misconception code following the detection order in the taxonomy. This is pure deterministic logic, fully testable without Firebase or Claude.
+
+5. Marker reader — a small JS function that reads all hg-marker elements the student has scrolled past at bot activation time, extracts topic, prereqs, and likely misconception codes, and packages them as context. This is what makes the bot entry point intelligent.
+
+6. Firebase Cloud Function — the proxy layer that accepts the misconception code, marker context, and conversation history, then calls the Claude API and returns the scaffolding response. API key never leaves this layer.
+
+7. Claude system prompt — the scaffolding generator prompt, tested against each MC code (including compound codes) to verify Socratic quality and correct one-at-a-time sequencing before the demo.
+
+8. Bot UI — the chat interface surfaced to the student, wired to the Firebase proxy, displaying the disambiguation lists and scaffolding responses.
+
+9. Adaptive response — update interactive plotting and misconception detection to address repeated incorrect answers and provide targeted intervention based on those errors.

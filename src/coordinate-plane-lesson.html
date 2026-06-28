@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finding Points on the Coordinate Plane</title>
+<!--
+  Digital-textbook lesson · Grade 6 · The Coordinate Plane (four quadrants)
+  Purpose: launch point for the plotting practice / bot demo.
+  Establishes the "contract" the demo assumes: vocabulary, the (x, y) convention,
+  sign->quadrant mapping, and a grid extent of -5..5.
+  Design system: x is coral, y is teal, used everywhere the distinction matters.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#16263d;          /* primary text + structure (blueprint navy) */
+    --ink-soft:#54647a;     /* secondary text */
+    --paper:#f6f9fc;        /* page background */
+    --surface:#ffffff;      /* cards */
+    --line:#e6edf4;         /* card borders */
+    --grid:#dbe6f1;         /* graph-paper lines */
+    --x:#e2603a;            /* x / across */
+    --x-tint:#fbece6;
+    --y:#0e9488;            /* y / up */
+    --y-tint:#e3f3f1;
+    --focus:#2f6df0;
+    --font-display:'Space Grotesk',system-ui,sans-serif;
+    --font-body:'Inter',system-ui,sans-serif;
+    --font-mono:'Space Mono',ui-monospace,monospace;
+    --maxw:760px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    font-family:var(--font-body);
+    color:var(--ink);
+    background-color:var(--paper);
+    background-image:
+      linear-gradient(var(--grid) 1px,transparent 1px),
+      linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:28px 28px;
+    background-position:center top;
+    line-height:1.65;
+    font-size:17px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 22px}
+
+  /* invisible learner-state markers — read by the bot, never rendered */
+  .hg-marker{display:none}
+
+  /* ---------- header ---------- */
+  header.masthead{
+    background:var(--ink);
+    color:#fff;
+    border-bottom:3px solid var(--x);
+  }
+  .masthead .wrap{padding-top:30px;padding-bottom:38px}
+  .crumb{
+    font-family:var(--font-mono);
+    font-size:.72rem;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:#9fb2c9;
+    margin:0 0 18px;
+  }
+  h1.title{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:clamp(1.9rem,5.5vw,2.9rem);
+    line-height:1.05;
+    margin:0 0 14px;
+    letter-spacing:-.01em;
+  }
+  .title .c-x{color:var(--x)}
+  .title .c-y{color:var(--y)}
+  .lede{color:#cdd8e6;font-size:1.05rem;max-width:48ch;margin:0}
+
+  /* ---------- objectives ---------- */
+  .goals{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:22px 24px;
+    margin:-26px auto 0;
+    box-shadow:0 14px 30px -22px rgba(22,38,61,.4);
+  }
+  .goals h2{
+    font-family:var(--font-mono);
+    text-transform:uppercase;
+    letter-spacing:.12em;
+    font-size:.74rem;
+    font-weight:700;
+    color:var(--ink-soft);
+    margin:0 0 12px;
+  }
+  .goals ul{margin:0;padding-left:0;list-style:none}
+  .goals li{position:relative;padding-left:30px;margin:9px 0;font-size:.97rem}
+  .goals li::before{
+    content:"";position:absolute;left:6px;top:.62em;
+    width:9px;height:9px;border-radius:50%;
+    background:var(--x);box-shadow:0 0 0 4px var(--x-tint);
+  }
+
+  /* ---------- sections ---------- */
+  main{padding:18px 0 10px}
+  .lesson{margin:46px 0}
+  .eyebrow{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+  .coord-badge{
+    font-family:var(--font-mono);
+    font-size:.78rem;
+    font-weight:700;
+    color:var(--ink);
+    background:var(--surface);
+    border:1.5px solid var(--ink);
+    border-radius:7px;
+    padding:3px 9px;
+    white-space:nowrap;
+  }
+  .coord-badge .bx{color:var(--x)}
+  .coord-badge .by{color:var(--y)}
+  .eyebrow .kicker{
+    font-family:var(--font-mono);
+    text-transform:uppercase;
+    letter-spacing:.13em;
+    font-size:.72rem;
+    color:var(--ink-soft);
+  }
+  .lesson h2{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:clamp(1.4rem,3.6vw,1.85rem);
+    line-height:1.15;
+    margin:.1em 0 .5em;
+    letter-spacing:-.01em;
+  }
+  .lesson p{margin:0 0 1.05em}
+  .lesson p + .figure{margin-top:6px}
+
+  /* inline coordinate notation */
+  .pair{font-family:var(--font-mono);font-weight:700;white-space:nowrap}
+  .pair .x{color:var(--x)}
+  .pair .y{color:var(--y)}
+  .term{font-weight:600}
+  .term.x{color:var(--x)}
+  .term.y{color:var(--y)}
+
+  .callout{
+    border-left:4px solid var(--x);
+    background:var(--x-tint);
+    padding:14px 18px;
+    border-radius:0 10px 10px 0;
+    margin:1.2em 0;
+    font-size:.97rem;
+  }
+  .callout.y{border-left-color:var(--y);background:var(--y-tint)}
+  .callout strong{font-family:var(--font-display)}
+
+  /* ---------- figures ---------- */
+  .figure{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:18px;
+    margin:1.3em 0;
+    text-align:center;
+  }
+  .figure .plane-svg{width:100%;height:auto;max-width:380px;display:block;margin:0 auto}
+  figcaption{
+    font-size:.86rem;color:var(--ink-soft);
+    margin-top:12px;max-width:46ch;margin-left:auto;margin-right:auto;
+  }
+
+  /* svg primitives */
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .axis{stroke:var(--ink);stroke-width:2}
+  .tick{font-family:var(--font-mono);font-size:11px;fill:var(--ink-soft)}
+  .axis-label{font-family:var(--font-display);font-size:15px;font-weight:700}
+  .quad{font-family:var(--font-display);font-weight:700;font-size:15px;fill:#a9bacb}
+  .quad-sign{font-family:var(--font-mono);font-size:11px;fill:var(--ink-soft)}
+  .pt{fill:var(--ink);stroke:#fff;stroke-width:2}
+  .pt-label{font-family:var(--font-mono);font-weight:700;font-size:12px;fill:var(--ink)}
+  .path-x{stroke:var(--x);stroke-width:3;stroke-linecap:round}
+  .path-y{stroke:var(--y);stroke-width:3;stroke-linecap:round}
+
+  /* ---------- sign table ---------- */
+  .signs{
+    width:100%;border-collapse:collapse;margin:1.2em 0;
+    font-size:.95rem;background:var(--surface);
+    border:1px solid var(--line);border-radius:12px;overflow:hidden;
+  }
+  .signs th,.signs td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line)}
+  .signs thead th{
+    font-family:var(--font-mono);font-size:.7rem;text-transform:uppercase;
+    letter-spacing:.1em;color:var(--ink-soft);background:var(--paper)
+  }
+  .signs tr:last-child td{border-bottom:none}
+  .signs .q{font-family:var(--font-display);font-weight:700}
+  .signs .sx{color:var(--x);font-weight:700}
+  .signs .sy{color:var(--y);font-weight:700}
+
+  /* ---------- check questions ---------- */
+  .check{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:20px 22px;
+    margin:1.2em 0;
+  }
+  .check .qno{
+    font-family:var(--font-mono);font-size:.72rem;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--ink-soft);margin:0 0 4px
+  }
+  .check .qtext{font-weight:600;margin:0 0 14px}
+  .check .qtext .plane-svg{max-width:240px;margin:12px auto 0}
+  .opts{display:grid;gap:9px}
+  .opt{
+    font-family:inherit;font-size:.95rem;text-align:left;
+    padding:11px 14px;border:1.5px solid var(--line);border-radius:10px;
+    background:var(--paper);color:var(--ink);cursor:pointer;
+    transition:border-color .15s,background .15s;
+  }
+  .opt:hover{border-color:var(--ink-soft)}
+  .opt:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+  .opt.correct{border-color:var(--y);background:var(--y-tint);font-weight:600}
+  .opt.wrong{border-color:var(--x);background:var(--x-tint)}
+  .opt[disabled]{cursor:default}
+  .feedback{margin:13px 0 0;font-size:.92rem;font-weight:600;min-height:1.2em}
+  .feedback.ok{color:var(--y)}
+  .feedback.no{color:var(--x)}
+
+  /* ---------- interactive: number the quadrants ---------- */
+  .qa{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin:1.4em 0}
+  .qa-kicker{font-family:var(--font-mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 4px}
+  .qa-prompt{font-weight:600;margin:0 0 14px}
+  .qa-stage{text-align:center}
+  .qa .plane-svg{width:100%;height:auto;max-width:320px;display:block;margin:0 auto}
+  .qa-hit{fill:transparent;cursor:pointer;transition:fill .12s}
+  .qa-hit:hover{fill:var(--y-tint)}
+  .qa-hit:focus-visible{outline:3px solid var(--focus);outline-offset:-3px}
+  .qa.locked .qa-hit{cursor:default}
+  .qa.locked .qa-hit:hover{fill:transparent}
+  .qa-num{font-family:var(--font-display);font-weight:700;font-size:22px;fill:var(--ink);opacity:0;transition:opacity .15s}
+  .qa-num.show{opacity:1}
+  .qa-num.correct{fill:var(--y)}
+  .qa-status{font-size:.95rem;color:var(--ink-soft);text-align:center;margin:14px 0 0;min-height:1.2em}
+  .qa-controls{display:flex;justify-content:center;margin:12px 0 0}
+  .qa-btn{font-family:var(--font-display);font-weight:700;font-size:.95rem;background:var(--paper);color:var(--ink);border:1.5px solid var(--line);border-radius:10px;padding:9px 22px;cursor:pointer;transition:border-color .15s}
+  .qa-btn:hover{border-color:var(--ink-soft)}
+  .qa-btn:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+
+  /* ---------- vocabulary ---------- */
+  .vocab{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .vocab dt{
+    font-family:var(--font-display);font-weight:700;
+    background:var(--surface);padding:13px 18px 4px
+  }
+  .vocab dd{background:var(--surface);margin:0;padding:0 18px 14px;font-size:.94rem;color:var(--ink-soft)}
+
+  /* ---------- handoff ---------- */
+  .handoff{
+    background:var(--ink);color:#fff;border-radius:18px;
+    padding:34px 30px;text-align:center;margin:50px 0 0;
+  }
+  .handoff h2{font-family:var(--font-display);font-size:1.5rem;margin:0 0 8px;color:#fff}
+  .handoff p{color:#cdd8e6;margin:0 auto 22px;max-width:42ch}
+  .btn{
+    display:inline-block;font-family:var(--font-display);font-weight:700;
+    font-size:1rem;background:var(--x);color:#fff;text-decoration:none;
+    padding:14px 30px;border-radius:11px;transition:transform .12s,background .15s;
+  }
+  .btn:hover{background:#cf5230;transform:translateY(-1px)}
+  .btn:focus-visible{outline:3px solid #fff;outline-offset:3px}
+
+  footer{padding:34px 0 60px;text-align:center}
+  footer p{font-family:var(--font-mono);font-size:.74rem;color:var(--ink-soft);margin:0}
+
+  @media (max-width:560px){
+    body{font-size:16px}
+    .goals{margin-top:-18px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none!important;scroll-behavior:auto!important}
+    .btn:hover{transform:none}
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <p class="crumb">Math · The Coordinate Plane</p>
+    <h1 class="title">Finding points on the <span class="c-x">coordinate</span> <span class="c-y">plane</span></h1>
+    <p class="lede">Two numbers are enough to pin down any spot on a grid — once you know which number does which job.</p>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="goals" aria-label="Lesson goals">
+    <h2>What you'll be able to do</h2>
+    <ul>
+      <li>Name the parts of the coordinate plane: axes, origin, and quadrants.</li>
+      <li>Write and read an ordered pair in the form <span class="pair">(<span class="x">x</span>, <span class="y">y</span>)</span>.</li>
+      <li>Plot and locate points in all four quadrants, including negatives.</li>
+    </ul>
+  </section>
+</div>
+
+<main class="wrap">
+
+  <!-- 1 -->
+  <section class="lesson">
+    <div class="eyebrow"><span class="coord-badge">step 1</span><span class="kicker">A line you already know</span></div>
+    <h2>Start with one number line</h2>
+    <span class="hg-marker" data-topic="number-line" data-prereqs="" data-likely-misconceptions="MC-03" aria-hidden="true"></span>
+    <p>You've used a <strong>number line</strong>. It stretches out from <span class="pair">0</span> in two directions: positive numbers to the right, negative numbers to the left. Every number marks one exact spot.</p>
+    <p>One number line is great for one piece of information — like temperature, or how many steps forward you took. But it can't tell you <em>where</em> something is on a flat surface, like a seat in a movie theater or a square on a map. For that, you need a second direction.</p>
+    <figure class="figure">
+      <div class="plane-svg" data-plane='{"type":"numberline","range":5}'></div>
+      <figcaption>A single number line: distance and direction from zero, but only along one path.</figcaption>
+    </figure>
+  </section>
+
+  <!-- 2 -->
+  <section class="lesson">
+    <div class="eyebrow"><span class="coord-badge">step 2</span><span class="kicker">Two lines, one plane</span></div>
+    <h2>Cross two number lines</h2>
+    <span class="hg-marker" data-topic="coordinate-plane" data-prereqs="number-line" data-likely-misconceptions="" aria-hidden="true"></span>
+    <p>Take a horizontal number line and a vertical number line, and cross them so their zeros line up. Now you have a <strong>coordinate plane</strong> — a flat grid where every point has an address.</p>
+    <span class="hg-marker" data-topic="x-axis" data-prereqs="number-line, coordinate-plane" data-likely-misconceptions="" aria-hidden="true"></span>
+    <span class="hg-marker" data-topic="y-axis" data-prereqs="number-line, coordinate-plane" data-likely-misconceptions="" aria-hidden="true"></span>
+    <span class="hg-marker" data-topic="origin" data-prereqs="x-axis, y-axis" data-likely-misconceptions="MC-03" aria-hidden="true"></span>
+    <p>The two lines are called <strong>axes</strong>. The horizontal one is the <span class="term x">x-axis</span>. The vertical one is the <span class="term y">y-axis</span>. The spot where they cross — where both lines read zero — is the <strong>origin</strong>, written <span class="pair">(<span class="x">0</span>, <span class="y">0</span>)</span>.</p>
+    <div class="callout"><strong>Notice:</strong> the origin isn't "the middle" of the picture — it's the one point where the two axes cross. That's true no matter how much of the grid you can see.</div>
+    <figure class="figure">
+      <div class="plane-svg" data-plane='{"type":"plane","range":5,"labels":true}'></div>
+      <figcaption>The <span style="color:var(--x);font-weight:600">x-axis</span> runs across; the <span style="color:var(--y);font-weight:600">y-axis</span> runs up and down. They meet at the origin.</figcaption>
+    </figure>
+  </section>
+
+  <!-- 3 -->
+  <section class="lesson">
+    <div class="eyebrow"><span class="coord-badge">step 3</span><span class="kicker">Four regions</span></div>
+    <h2>The axes make four quadrants</h2>
+    <span class="hg-marker" data-topic="quadrants" data-prereqs="x-axis, y-axis, origin" data-likely-misconceptions="MC-04a, MC-04b, MC-04c" aria-hidden="true"></span>
+    <p>The two axes split the plane into four corners called <strong>quadrants</strong>. They're numbered with Roman numerals <strong>I, II, III, IV</strong>, starting at the top-right and going counter-clockwise.</p>
+    <span class="hg-marker" data-topic="sign-to-quadrant" data-prereqs="quadrants, number-line" data-likely-misconceptions="MC-04a, MC-04b, MC-04c" aria-hidden="true"></span>
+    <p>Which quadrant a point lands in depends only on the <em>signs</em> of its two numbers — whether each is positive or negative.</p>
+    <figure class="figure">
+      <div class="plane-svg" data-plane='{"type":"plane","range":5,"labels":true,"quadrants":true}'></div>
+      <figcaption>Quadrants I–IV. The signs of a point's two numbers decide which one it's in.</figcaption>
+    </figure>
+    <table class="signs">
+      <thead><tr><th>Quadrant</th><th>x sign</th><th>y sign</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td class="q">I</td><td class="sx">positive</td><td class="sy">positive</td><td><span class="pair">(<span class="x">4</span>, <span class="y">3</span>)</span></td></tr>
+        <tr><td class="q">II</td><td class="sx">negative</td><td class="sy">positive</td><td><span class="pair">(<span class="x">−4</span>, <span class="y">3</span>)</span></td></tr>
+        <tr><td class="q">III</td><td class="sx">negative</td><td class="sy">negative</td><td><span class="pair">(<span class="x">−4</span>, <span class="y">−3</span>)</span></td></tr>
+        <tr><td class="q">IV</td><td class="sx">positive</td><td class="sy">negative</td><td><span class="pair">(<span class="x">4</span>, <span class="y">−3</span>)</span></td></tr>
+      </tbody>
+    </table>
+    <span class="hg-marker" data-topic="quadrant-numbering" data-prereqs="quadrants, sign-to-quadrant" data-likely-misconceptions="MC-04a, MC-04b, MC-04c" aria-hidden="true"></span>
+    <div class="qa" id="quad-activity">
+      <p class="qa-kicker">Try it</p>
+      <p class="qa-prompt">Number the quadrants yourself. Start with <strong>Quadrant I</strong> and click the quadrants in order.</p>
+      <div class="qa-stage">
+        <svg id="qa-grid" class="plane-svg" role="application" aria-label="Four-quadrant plane. Click each quadrant in turn to label it one through four."></svg>
+      </div>
+      <p class="qa-status" id="qa-status" role="status">Click the quadrant where <strong>I</strong> belongs.</p>
+      <p class="feedback" id="qa-feedback" role="status"></p>
+      <div class="qa-controls">
+        <button class="qa-btn" id="qa-reset" type="button">Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="lesson">
+    <div class="eyebrow"><span class="coord-badge">step 4</span><span class="kicker">The address of a point</span></div>
+    <h2>Ordered pairs: <span class="pair">(<span class="x">x</span>, <span class="y">y</span>)</span></h2>
+    <span class="hg-marker" data-topic="ordered-pair" data-prereqs="x-axis, y-axis, origin" data-likely-misconceptions="MC-01" aria-hidden="true"></span>
+    <p>A point's address is an <strong>ordered pair</strong> of two numbers, called its <strong>coordinates</strong>, written inside parentheses and separated by a comma.</p>
+    <p>The word <em>ordered</em> is the whole game: the order tells you which number does which job.</p>
+    <ul>
+      <li>The <strong>first</strong> number is the <span class="term x">x-coordinate</span> — how far to move <span class="term x">across</span> (right if positive, left if negative).</li>
+      <li>The <strong>second</strong> number is the <span class="term y">y-coordinate</span> — how far to move <span class="term y">up or down</span> (up if positive, down if negative).</li>
+    </ul>
+    <span class="hg-marker" data-topic="plotting-across-then-up" data-prereqs="ordered-pair, origin" data-likely-misconceptions="MC-01, MC-08" aria-hidden="true"></span>
+    <p>To plot a point, start at the origin, move <span class="term x">across first</span>, then <span class="term y">up or down</span>. Here's <span class="pair">(<span class="x">3</span>, <span class="y">2</span>)</span>: go <span class="term x">right 3</span>, then <span class="term y">up 2</span>.</p>
+    <figure class="figure">
+      <div class="plane-svg" data-plane='{"type":"plane","range":5,"labels":true,"path":{"x":3,"y":2},"points":[{"x":3,"y":2,"label":"(3, 2)"}]}'></div>
+      <figcaption>Across the <span style="color:var(--x);font-weight:600">x</span> direction first, then up the <span style="color:var(--y);font-weight:600">y</span> direction.</figcaption>
+    </figure>
+    <span class="hg-marker" data-topic="order-matters" data-prereqs="ordered-pair" data-likely-misconceptions="MC-01" aria-hidden="true"></span>
+    <div class="callout"><strong>Order matters:</strong> <span class="pair">(<span class="x">3</span>, <span class="y">2</span>)</span> and <span class="pair">(<span class="x">2</span>, <span class="y">3</span>)</span> are two <em>different</em> points. Swapping the numbers sends you somewhere else entirely.</div>
+  </section>
+
+  <!-- 5 -->
+  <section class="lesson">
+    <div class="eyebrow"><span class="coord-badge">step 5</span><span class="kicker">Going negative</span></div>
+    <h2>Plotting in every quadrant</h2>
+    <span class="hg-marker" data-topic="negative-x" data-prereqs="number-line, plotting-across-then-up" data-likely-misconceptions="MC-02, MC-06" aria-hidden="true"></span>
+    <span class="hg-marker" data-topic="negative-y" data-prereqs="number-line, plotting-across-then-up" data-likely-misconceptions="MC-02, MC-06" aria-hidden="true"></span>
+    <p>The rule never changes when numbers go negative — you just move the other way. A negative <span class="term x">x</span> means go <span class="term x">left</span>; a negative <span class="term y">y</span> means go <span class="term y">down</span>.</p>
+    <p>Look at <span class="pair">(<span class="x">−4</span>, <span class="y">3</span>)</span>: from the origin, go <span class="term x">left 4</span>, then <span class="term y">up 3</span>. That lands in Quadrant II.</p>
+    <figure class="figure">
+      <div class="plane-svg" data-plane='{"type":"plane","range":5,"labels":true,"path":{"x":-4,"y":3},"points":[{"x":-4,"y":3,"label":"(−4, 3)"}]}'></div>
+      <figcaption>Same two steps, new directions: <span style="color:var(--x);font-weight:600">left 4</span>, then <span style="color:var(--y);font-weight:600">up 3</span>.</figcaption>
+    </figure>
+    <span class="hg-marker" data-topic="reading-coordinates" data-prereqs="plotting-across-then-up" data-likely-misconceptions="MC-01" aria-hidden="true"></span>
+    <p><strong>Reading a point</strong> works in reverse. Find how far it sits <span class="term x">across</span> from the origin, then how far <span class="term y">up or down</span>. Write the across number first.</p>
+    <span class="hg-marker" data-topic="zero-coordinate" data-prereqs="origin, x-axis, y-axis" data-likely-misconceptions="MC-07, MC-08" aria-hidden="true"></span>
+    <p>And watch for <strong>zeros</strong>: a point like <span class="pair">(<span class="x">0</span>, <span class="y">4</span>)</span> has no across-movement, so it sits right <em>on</em> the <span class="term y">y-axis</span>. A point like <span class="pair">(<span class="x">−3</span>, <span class="y">0</span>)</span> sits on the <span class="term x">x-axis</span>.</p>
+  </section>
+
+  <!-- check your understanding -->
+  <section class="lesson" id="check">
+    <div class="eyebrow"><span class="coord-badge">check</span><span class="kicker">Check your understanding</span></div>
+    <h2>Quick checks</h2>
+    <p>Try each one before you reveal the answer. These are just for you — no score is recorded.</p>
+
+    <div class="check" data-answer="2">
+      <p class="qno">Question 1</p>
+      <p class="qtext">Which quadrant contains the point <span class="pair">(<span class="x">−2</span>, <span class="y">5</span>)</span>?</p>
+      <div class="opts">
+        <button class="opt">Quadrant I</button>
+        <button class="opt">Quadrant II</button>
+        <button class="opt">Quadrant III</button>
+        <button class="opt">Quadrant IV</button>
+      </div>
+      <p class="feedback" role="status"></p>
+    </div>
+
+    <div class="check" data-answer="3">
+      <p class="qno">Question 2</p>
+      <p class="qtext">What is the ordered pair for point <strong>A</strong>?
+        <span class="plane-svg" data-plane='{"type":"plane","range":5,"labels":true,"points":[{"x":-3,"y":-2,"label":"A"}]}'></span>
+      </p>
+      <div class="opts">
+        <button class="opt"><span class="pair">(<span class="x">−2</span>, <span class="y">−3</span>)</span></button>
+        <button class="opt"><span class="pair">(<span class="x">3</span>, <span class="y">2</span>)</span></button>
+        <button class="opt"><span class="pair">(<span class="x">−3</span>, <span class="y">−2</span>)</span></button>
+        <button class="opt"><span class="pair">(<span class="x">−3</span>, <span class="y">2</span>)</span></button>
+      </div>
+      <p class="feedback" role="status"></p>
+    </div>
+
+    <div class="check" data-answer="1">
+      <p class="qno">Question 3</p>
+      <p class="qtext">Where does the point <span class="pair">(<span class="x">4</span>, <span class="y">0</span>)</span> sit?</p>
+      <div class="opts">
+        <button class="opt">On the x-axis</button>
+        <button class="opt">On the y-axis</button>
+        <button class="opt">In Quadrant I</button>
+        <button class="opt">At the origin</button>
+      </div>
+      <p class="feedback" role="status"></p>
+    </div>
+  </section>
+
+  <!-- vocabulary -->
+  <section class="lesson">
+    <div class="eyebrow"><span class="coord-badge">recap</span><span class="kicker">Words to keep</span></div>
+    <h2>Vocabulary</h2>
+    <dl class="vocab">
+      <dt>Coordinate plane</dt><dd>A flat grid formed by two number lines crossing at right angles.</dd>
+      <dt>Axes</dt><dd>The two number lines: the x-axis (horizontal) and the y-axis (vertical).</dd>
+      <dt>Origin</dt><dd>The point where the axes cross, with coordinates <span class="pair">(<span class="x">0</span>, <span class="y">0</span>)</span>.</dd>
+      <dt>Ordered pair</dt><dd>Two numbers <span class="pair">(<span class="x">x</span>, <span class="y">y</span>)</span> that give a point's address. Order matters.</dd>
+      <dt>Coordinates</dt><dd>The two numbers in an ordered pair: the x-coordinate (across) and the y-coordinate (up/down).</dd>
+      <dt>Quadrant</dt><dd>One of the four regions (I, II, III, IV) the axes divide the plane into.</dd>
+    </dl>
+  </section>
+
+  <!-- handoff -->
+  <section class="handoff">
+    <h2>Now plot some points</h2>
+    <p>Head to the practice grid and try plotting points yourself. Work at your own pace — you can ask for a hint whenever you're stuck.</p>
+    <a class="btn" href="#" data-practice-link>Go to plotting practice →</a>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap"><p>Coordinate Plane · Lesson 1 of the plotting unit</p></div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var NS = "http://www.w3.org/2000/svg";
+  function svgEl(tag, attrs){
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function txt(el, s){ el.appendChild(document.createTextNode(s)); return el; }
+
+  // ---- number-line renderer ----
+  function buildNumberLine(host, spec){
+    var range = spec.range || 5, u = 30, pad = 26;
+    var w = range*2*u + pad*2, h = 70;
+    var cx0 = pad + range*u, cy = 34;
+    var X = function(x){ return cx0 + x*u; };
+    var svg = svgEl("svg", {viewBox:"0 0 "+w+" "+h, class:"plane-svg", role:"img",
+      "aria-label":"A number line from -"+range+" to "+range});
+    svg.appendChild(svgEl("line", {x1:X(-range), y1:cy, x2:X(range), y2:cy, class:"axis"}));
+    addArrow(svg, X(range), cy, X(range)+1, cy, "var(--ink)");
+    addArrow(svg, X(-range), cy, X(-range)-1, cy, "var(--ink)");
+    for (var i=-range; i<=range; i++){
+      svg.appendChild(svgEl("line", {x1:X(i), y1:cy-5, x2:X(i), y2:cy+5,
+        stroke:"var(--ink)", "stroke-width":i===0?2:1.5}));
+      var t = svgEl("text", {x:X(i), y:cy+22, "text-anchor":"middle", class:"tick"});
+      svg.appendChild(txt(t, String(i)));
+    }
+    host.appendChild(svg);
+  }
+
+  // ---- arrowhead helper ----
+  function addArrow(svg, x1, y1, x2, y2, color){
+    var ang = Math.atan2(y2-y1, x2-x1), len = 8, spread = 0.5;
+    var p = svgEl("path", {
+      d: "M "+x2+" "+y2+
+         " L "+(x2-len*Math.cos(ang-spread))+" "+(y2-len*Math.sin(ang-spread))+
+         " M "+x2+" "+y2+
+         " L "+(x2-len*Math.cos(ang+spread))+" "+(y2-len*Math.sin(ang+spread)),
+      stroke: color, "stroke-width":2, fill:"none", "stroke-linecap":"round"});
+    svg.appendChild(p);
+  }
+
+  // ---- coordinate plane renderer ----
+  function buildPlane(host, spec){
+    var range = spec.range || 5, u = 30, pad = 26;
+    var size = range*2*u + pad*2;
+    var c = pad + range*u;
+    var X = function(x){ return c + x*u; };
+    var Y = function(y){ return c - y*u; };
+    var svg = svgEl("svg", {viewBox:"0 0 "+size+" "+size, class:"plane-svg", role:"img",
+      "aria-label": spec.aria || "Coordinate plane"});
+
+    // grid
+    for (var i=-range; i<=range; i++){
+      if (i!==0){
+        svg.appendChild(svgEl("line",{x1:X(i),y1:Y(-range),x2:X(i),y2:Y(range),class:"grid-line"}));
+        svg.appendChild(svgEl("line",{x1:X(-range),y1:Y(i),x2:X(range),y2:Y(i),class:"grid-line"}));
+      }
+    }
+    // quadrant labels
+    if (spec.quadrants){
+      var qs = [["I",range/2,range/2],["II",-range/2,range/2],["III",-range/2,-range/2],["IV",range/2,-range/2]];
+      qs.forEach(function(q){
+        var t = svgEl("text",{x:X(q[1]),y:Y(q[2]),"text-anchor":"middle","dominant-baseline":"middle",class:"quad"});
+        svg.appendChild(txt(t,q[0]));
+      });
+    }
+    // axes
+    svg.appendChild(svgEl("line",{x1:X(-range),y1:Y(0),x2:X(range),y2:Y(0),class:"axis"}));
+    svg.appendChild(svgEl("line",{x1:X(0),y1:Y(range),x2:X(0),y2:Y(-range),class:"axis"}));
+    addArrow(svg, X(range-1), Y(0), X(range), Y(0), "var(--ink)");
+    addArrow(svg, X(-range+1), Y(0), X(-range), Y(0), "var(--ink)");
+    addArrow(svg, X(0), Y(range-1), X(0), Y(range), "var(--ink)");
+    addArrow(svg, X(0), Y(-range+1), X(0), Y(-range), "var(--ink)");
+
+    // tick numbers (skip crowding on small ranges -> show all integers)
+    if (spec.labels){
+      for (var j=-range; j<=range; j++){
+        if (j===0) continue;
+        var tx = svgEl("text",{x:X(j),y:Y(0)+15,"text-anchor":"middle",class:"tick"});
+        svg.appendChild(txt(tx,String(j)));
+        var ty = svgEl("text",{x:X(0)-9,y:Y(j)+4,"text-anchor":"end",class:"tick"});
+        svg.appendChild(txt(ty,String(j)));
+      }
+      var lx = svgEl("text",{x:X(range)-2,y:Y(0)-9,"text-anchor":"end",class:"axis-label",fill:"var(--x)"});
+      svg.appendChild(txt(lx,"x"));
+      var ly = svgEl("text",{x:X(0)+9,y:Y(range)+4,"text-anchor":"start",class:"axis-label",fill:"var(--y)"});
+      svg.appendChild(txt(ly,"y"));
+    }
+
+    // across-then-up path
+    if (spec.path){
+      var px = spec.path.x, py = spec.path.y;
+      if (px!==0) svg.appendChild(svgEl("line",{x1:X(0),y1:Y(0),x2:X(px),y2:Y(0),class:"path-x"}));
+      if (py!==0) svg.appendChild(svgEl("line",{x1:X(px),y1:Y(0),x2:X(px),y2:Y(py),class:"path-y"}));
+    }
+
+    // points
+    (spec.points||[]).forEach(function(p){
+      svg.appendChild(svgEl("circle",{cx:X(p.x),cy:Y(p.y),r:6,class:"pt"}));
+      if (p.label){
+        var dx = p.x<0 ? -9 : 9, anc = p.x<0 ? "end" : "start";
+        var tl = svgEl("text",{x:X(p.x)+dx,y:Y(p.y)-9,"text-anchor":anc,class:"pt-label"});
+        svg.appendChild(txt(tl,p.label));
+      }
+    });
+
+    host.appendChild(svg);
+  }
+
+  // ---- render all declared diagrams ----
+  document.querySelectorAll("[data-plane]").forEach(function(host){
+    var spec;
+    try { spec = JSON.parse(host.getAttribute("data-plane")); }
+    catch(e){ return; }
+    if (spec.type === "numberline") buildNumberLine(host, spec);
+    else buildPlane(host, spec);
+  });
+
+  // ---- check-question logic ----
+  document.querySelectorAll(".check").forEach(function(card){
+    var answer = parseInt(card.getAttribute("data-answer"), 10);
+    var opts = Array.prototype.slice.call(card.querySelectorAll(".opt"));
+    var fb = card.querySelector(".feedback");
+    opts.forEach(function(opt, idx){
+      opt.addEventListener("click", function(){
+        if (card.classList.contains("done")) return;
+        card.classList.add("done");
+        var chosen = idx + 1;
+        opts.forEach(function(o, i){
+          o.setAttribute("disabled","");
+          if (i+1 === answer) o.classList.add("correct");
+        });
+        if (chosen === answer){
+          fb.textContent = "Correct.";
+          fb.className = "feedback ok";
+        } else {
+          opt.classList.add("wrong");
+          fb.textContent = "Not quite — the highlighted answer is the one to study.";
+          fb.className = "feedback no";
+        }
+      });
+    });
+  });
+})();
+
+// ---- interactive: number the quadrants ----
+(function(){
+  "use strict";
+  var host = document.getElementById("quad-activity");
+  if (!host) return;
+  var NS = "http://www.w3.org/2000/svg";
+  var svg = document.getElementById("qa-grid");
+  var statusEl = document.getElementById("qa-status");
+  var fb = document.getElementById("qa-feedback");
+  var resetBtn = document.getElementById("qa-reset");
+
+  function el(tag, attrs){ var e=document.createElementNS(NS,tag); for (var k in attrs) e.setAttribute(k, attrs[k]); return e; }
+  function txt(e,s){ e.appendChild(document.createTextNode(s)); return e; }
+
+  var RANGE=5, U=30, PAD=26, SIZE=RANGE*2*U+PAD*2, C=PAD+RANGE*U, HALF=RANGE*U;
+  function X(x){ return C+x*U; }
+  function Y(y){ return C-y*U; }
+  function arrow(x1,y1,x2,y2){
+    var a=Math.atan2(y2-y1,x2-x1), L=8, s=0.5;
+    svg.appendChild(el("path",{d:"M "+x2+" "+y2+" L "+(x2-L*Math.cos(a-s))+" "+(y2-L*Math.sin(a-s))+" M "+x2+" "+y2+" L "+(x2-L*Math.cos(a+s))+" "+(y2-L*Math.sin(a+s)),stroke:"var(--ink)","stroke-width":2,fill:"none","stroke-linecap":"round"}));
+  }
+
+  // quadrant corner -> hit-rect origin + numeral center
+  var QUADS = {
+    TR:{x:X(0),     y:Y(RANGE), cx:X(RANGE/2),  cy:Y(RANGE/2),  name:"top-right"},
+    TL:{x:X(-RANGE),y:Y(RANGE), cx:X(-RANGE/2), cy:Y(RANGE/2),  name:"top-left"},
+    BL:{x:X(-RANGE),y:Y(0),     cx:X(-RANGE/2), cy:Y(-RANGE/2), name:"bottom-left"},
+    BR:{x:X(0),     y:Y(0),     cx:X(RANGE/2),  cy:Y(-RANGE/2), name:"bottom-right"}
+  };
+  var CORRECT = ["TR","TL","BL","BR"];   // standard scheme: I top-right, then counterclockwise
+  var ROMAN = ["","I","II","III","IV"];
+
+  var order=[], next=1, locked=false, numEls={};
+
+  function build(){
+    svg.setAttribute("viewBox","0 0 "+SIZE+" "+SIZE);
+    for (var i=-RANGE;i<=RANGE;i++){
+      if (i!==0){
+        svg.appendChild(el("line",{x1:X(i),y1:Y(-RANGE),x2:X(i),y2:Y(RANGE),class:"grid-line"}));
+        svg.appendChild(el("line",{x1:X(-RANGE),y1:Y(i),x2:X(RANGE),y2:Y(i),class:"grid-line"}));
+      }
+    }
+    Object.keys(QUADS).forEach(function(k){
+      var q=QUADS[k];
+      var r=el("rect",{x:q.x,y:q.y,width:HALF,height:HALF,class:"qa-hit",tabindex:"0",role:"button","aria-label":q.name+" quadrant"});
+      r.addEventListener("click",function(){ pick(k); });
+      r.addEventListener("keydown",function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); pick(k); } });
+      svg.appendChild(r);
+    });
+    svg.appendChild(el("line",{x1:X(-RANGE),y1:Y(0),x2:X(RANGE),y2:Y(0),class:"axis"}));
+    svg.appendChild(el("line",{x1:X(0),y1:Y(RANGE),x2:X(0),y2:Y(-RANGE),class:"axis"}));
+    arrow(X(RANGE-1),Y(0),X(RANGE),Y(0)); arrow(X(-RANGE+1),Y(0),X(-RANGE),Y(0));
+    arrow(X(0),Y(RANGE-1),X(0),Y(RANGE)); arrow(X(0),Y(-RANGE+1),X(0),Y(-RANGE));
+    svg.appendChild(txt(el("text",{x:X(RANGE)-2,y:Y(0)-9,"text-anchor":"end",class:"axis-label",fill:"var(--x)"}),"x"));
+    svg.appendChild(txt(el("text",{x:X(0)+9,y:Y(RANGE)+4,"text-anchor":"start",class:"axis-label",fill:"var(--y)"}),"y"));
+    Object.keys(QUADS).forEach(function(k){
+      var q=QUADS[k];
+      numEls[k]=txt(el("text",{x:q.cx,y:q.cy+7,"text-anchor":"middle",class:"qa-num","pointer-events":"none"}),"");
+      svg.appendChild(numEls[k]);
+    });
+  }
+
+  function pick(k){
+    if (locked || order.indexOf(k)!==-1) return;
+    numEls[k].textContent = ROMAN[next];
+    numEls[k].setAttribute("class","qa-num show");
+    order.push(k); next++;
+    if (next>4) evaluate();
+    else statusEl.innerHTML = "Click the quadrant where <strong>"+ROMAN[next]+"</strong> belongs.";
+  }
+
+  function evaluate(){
+    locked=true; host.classList.add("locked");
+    var ok = order.every(function(k,i){ return k===CORRECT[i]; });
+    statusEl.textContent = "";
+    if (ok){
+      fb.textContent = "Correct — you started in the top-right and counted counterclockwise.";
+      fb.className = "feedback ok";
+      Object.keys(numEls).forEach(function(k){ numEls[k].setAttribute("class","qa-num correct show"); });
+    } else {
+      fb.textContent = "Not quite. Quadrant I is the top-right, and the numbers go counterclockwise from there.";
+      fb.className = "feedback no";
+      CORRECT.forEach(function(k,i){
+        numEls[k].textContent = ROMAN[i+1];
+        numEls[k].setAttribute("class","qa-num correct show");
+      });
+    }
+    resetBtn.focus();
+  }
+
+  function reset(){
+    order=[]; next=1; locked=false; host.classList.remove("locked");
+    Object.keys(numEls).forEach(function(k){ numEls[k].textContent=""; numEls[k].setAttribute("class","qa-num"); });
+    fb.textContent=""; fb.className="feedback";
+    statusEl.innerHTML = "Click the quadrant where <strong>I</strong> belongs.";
+  }
+
+  resetBtn.addEventListener("click", reset);
+  build();
+})();
+</script>
+</body>
+</html>
