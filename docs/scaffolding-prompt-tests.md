@@ -386,14 +386,18 @@ Topics the student has encountered: coordinate-plane, x-axis, y-axis, origin, or
 > I moved across and stopped there.
 
 **Pass if:**
-- [ ] Acknowledges that the student made one move correctly
-- [ ] Asks how many separate moves plotting a point inside a quadrant requires
-- [ ] Does NOT say "you also need to move up/down"
+- [ ] Opens with a neutral frame ("Let's check each step" or similar) — not an affirmation of either move
+- [ ] Asks how many spaces the student counted along the x-axis and along the y-axis — both in one response, x first
+- [ ] Does NOT affirm either move before asking — affirming the x-move telegraphs that y is the problem
+- [ ] Does NOT name the missing move or say "you also need to move up/down"
 - [ ] Ends with a question mark
 
 **Fail if:**
+- Opens cold with no framing sentence
+- Affirms the first move as correct before asking (telegraphs the error)
 - States "you forgot the second move" or names the missing move
 - Asks about sign or direction (wrong code)
+- Asks only about one axis
 - Ends without a question
 
 ---
@@ -470,7 +474,7 @@ Topics the student has encountered: ordered-pair, x-axis, y-axis, origin, plotti
 **Conversation so far:**
 > User: I plotted it wrong.
 > Assistant: [first-turn response]
-> User: I went up first.
+> User: I think I got the numbers mixed up.
 
 **Pass if the response:**
 - [ ] Does not guess a single interpretation and proceed
@@ -501,9 +505,9 @@ Topics the student has encountered: ordered-pair, x-axis, y-axis, origin, plotti
 
 **Conversation so far:**
 > User: I plotted my point but it's wrong.
-> Assistant: When you look at an ordered pair like (3, 2), one of those numbers tells you how far to go across and the other tells you how far to go up or down. Which number do you think controls the across move?
+> Assistant: When you look at an ordered pair like (3, 2), one of those numbers tells you how far to move left or right, and the other tells you how far to go up or down. Which number do you think controls the left-or-right move?
 > User: The first number, the 3.
-> Assistant: Right — the first number is always the across move. So in (3, 2), you move 3 spaces across from the origin. Now, the second number — the 2 — tells you which move?
+> Assistant: Right. The first number always controls the left-or-right move, so in (3, 2) you'd move 3 spaces from the origin. What does the second number, the 2, tell you to do?
 > User: Up or down.
 
 **Pass if the next response:**
