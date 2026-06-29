@@ -99,17 +99,20 @@ Topics the student has encountered: number-line, coordinate-plane, x-axis, y-axi
 > I counted the spaces carefully but it still says I'm wrong.
 
 **Pass if:**
+- [ ] References the actual ordered pair (3, 2)
 - [ ] Acknowledges the student's counting effort
-- [ ] Asks where counting begins — what point do you start from?
+- [ ] Establishes that all plotting begins from the same point
+- [ ] Asks for the coordinates of that starting point — one unknown, student supplies it
 - [ ] Does NOT say the student is off by 1 or name the offset
 - [ ] Ends with a question mark
 
 **Fail if:**
-- States "you should start at 0, not 1"
+- States "you should start at 0, not 1" or names the offset
 - Asks about direction or sign (wrong code)
+- Does not reference (3, 2)
 - Ends without a question
 
-**TODO: Revisit this test for further learning design review.** The current response asks for the coordinates of the starting point. It is unclear whether that is the optimal first rung for MC-03, or whether asking the student to name the starting point (or describe where they began counting) would be more effective. Revisit before finalizing the prompt.
+**Multi-turn note:** If the student cannot identify (0, 0), surface the definition progressively — first give the coordinates, then if still unclear give the physical description ("where the x-axis and y-axis cross"). Once the origin is confirmed, affirm their movement was correct and invite a re-try from (0, 0). If scaffolding stalls entirely, escalate to teacher deferral.
 
 ---
 

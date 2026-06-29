@@ -229,28 +229,27 @@
   <div class="wrap"><p>Coordinate Plane · plotting practice · input source for misconception detection</p></div>
 </footer>
 
+<script src="js/misconception-detection.js"></script>
+<script src="js/marker-reader.js"></script>
+<script src="js/target-generator.js"></script>
+<script src="js/hegemon-bot.js"></script>
 <script>
 (function(){
   "use strict";
 
   /* ----------------------------------------------------------------
-     Target sequence — chosen so every live MC code is REACHABLE.
-       (3, 2)   Q1, x!=y, nonzero ....... MC-01, MC-08, MC-03
-       (-4, 3)  Q2, negative x .......... MC-02/MC-06 (x), MC-01, MC-08, MC-03
-       (2, -5)  Q4, negative y .......... MC-02/MC-06 (y), MC-01, MC-08, MC-03
-       (0, 4)   on the y-axis ........... MC-07
-       (-3, 0)  on the x-axis ........... MC-07
-       (-2, -3) Q3, both negative ....... MC-01, MC-02/MC-06 (both), MC-08, MC-03
-     Covers MC-01,02,03,06,07,08. MC-04 needs a naming task; MC-05 out of scope.
+     Target sequence — randomized each session by target-generator.js.
+     Six slots, one per category, so every live MC code is reachable
+     on multiple targets within a session:
+       Slot 0  Q1  (x>0, y>0, x!=y)    MC-01, MC-03, MC-08
+       Slot 1  Q2  (x<0, y>0)          MC-01, MC-02, MC-03, MC-06, MC-08
+       Slot 2  Q4  (x>0, y<0)          MC-01, MC-02, MC-03, MC-06, MC-08
+       Slot 3  Y-axis (x=0, y!=0)       MC-07
+       Slot 4  X-axis (y=0, x!=0)       MC-07
+       Slot 5  Q3  (x<0, y<0)          MC-01, MC-02, MC-03, MC-06, MC-08
+     MC-04 requires a naming task; MC-05 out of scope for this demo.
   ---------------------------------------------------------------- */
-  var TARGETS = [
-    {x:3,  y:2 },
-    {x:-4, y:3 },
-    {x:2,  y:-5},
-    {x:0,  y:4 },
-    {x:-3, y:0 },
-    {x:-2, y:-3}
-  ];
+  var TARGETS = TargetGenerator.generateTargets();
 
   /* ---- geometry ---- */
   var NS = "http://www.w3.org/2000/svg";
@@ -298,6 +297,22 @@
   var submissions = [];       // capture log
   var marker, cursorRing;     // persistent svg nodes
   var cursor = {x:0, y:0};    // keyboard cursor position
+  var mcErrorCount = {};      // { code: number } — errors per misconception code this session
+  var mcTriggered = {};       // { code: true } — codes that have already triggered Hegemon
+
+  /* ---- bot init ---- */
+  HegemonBot.init({
+    functionUrl: 'https://us-central1-hegemon-learning-guide.cloudfunctions.net/scaffold'
+  });
+
+  /* ---- retry handler (fired by HegemonBot when student clicks "Try again") ---- */
+  document.addEventListener('hegemon:retry', function () {
+    locked = false;
+    svg.classList.remove('locked');
+    btnSubmit.disabled = (placed === null);
+    btnNext.style.display = 'none';
+    elStatus.textContent = placed ? 'Point placed. Submit when ready.' : 'Click the grid to place your point.';
+  });
 
   /* ---- build the static grid once ---- */
   function buildGrid(){
@@ -386,17 +401,38 @@
     console.log("[hegemon] submission", record);
     showReadout(record);
 
-    /* --- DETECTION SEAM ------------------------------------------------
-       Deterministic misconception detection plugs in HERE, e.g.:
+    var isCorrect = (record.plottedX === record.targetX && record.plottedY === record.targetY);
 
-         const code = detectMisconception(record);   // "MC-0x" | null
-         const ctx  = readMarkers();                  // learner-state markers
-         const reply = await callScaffoldingProxy({ code, ctx, history });
+    // Retry submission while Hegemon is open
+    if (HegemonBot.isOpen()) {
+      if (isCorrect) {
+        HegemonBot.notifyCorrect();
+      } else {
+        var retryCode = HegemonDetect.detectMisconception(record);
+        HegemonBot.notifyWrong(retryCode);
+      }
+      return;
+    }
 
-       callScaffoldingProxy hits the Firebase Cloud Function, which holds the
-       API key and calls Claude for the Socratic response. None of that runs
-       on this page — this page only produces `record`.
-    ------------------------------------------------------------------- */
+    // Normal attempt tracking
+    if (!isCorrect) {
+      var code = HegemonDetect.detectMisconception(record);
+      if (code && !mcTriggered[code]) {
+        mcErrorCount[code] = (mcErrorCount[code] || 0) + 1;
+        if (mcErrorCount[code] >= 2) {
+          mcTriggered[code] = true;
+          var ctx = HegemonMarkers.snapshot();
+          HegemonBot.open({
+            misconceptionCode: code,
+            coords: {
+              targetX: record.targetX, targetY: record.targetY,
+              plottedX: record.plottedX, plottedY: record.plottedY
+            },
+            markerContext: ctx
+          });
+        }
+      }
+    }
   }
 
   function showReadout(r){

@@ -182,7 +182,7 @@ Each entry below names the error, states the scaffolding goal (what understandin
 
 **MC-02 — Sign/Directionality Error.** The student traveled the correct distance on one or both axes but in the wrong direction — the sign is being ignored or misread. Goal: the student connects the sign of each coordinate to its direction (left or right, up or down) for their specific ordered pair. Constraint: ask about both coordinates in one response, x first then y — asking about only one telegraphs which is wrong; reordering implies the reordered axis is the problem. Use the signs from the target ordered pair. Example first rung for (−4, 3) plotted as (4, 3): "Does a negative number on the x-axis move left or right? Does a positive number on the y-axis move up or down?"
 
-**MC-03 — Origin/Offset Error.** The student's count is off — they likely started at 1 or counted gridlines instead of spaces. Goal: the student understands two things in sequence: (1) counting begins at the origin, and (2) each coordinate counts spaces between lines, not lines. Constraint: confirm (1) before raising (2) — one rung at a time. Example first rung: "Where does counting start when you plot a point?"
+**MC-03 — Origin/Offset Error.** The student's count is off — they likely started at 1 or counted gridlines instead of spaces. For MC-03, their x-axis and y-axis movement pattern is typically correct; only the starting point is wrong. Goal: (1) confirm the student knows the origin is the universal starting point, then (2) once confirmed, encourage them to re-plot from (0, 0) using the same moves they already made. Constraint: ask for the coordinates of the starting point first — "What are the coordinates of the point where all plotting begins?" If the student cannot identify (0, 0), surface the definition progressively: first give the coordinates ("The starting point is at (0, 0)"), then if still unclear, give the physical description ("The starting point is where the x-axis and y-axis cross"). These are definitions, not the assessed item, and may be given freely. Once the origin is confirmed, affirm that their movement was right and invite a re-try. If re-try still fails, a different misconception may be present — probe further rather than repeating the origin rung. Example first rung (reference the actual ordered pair): "You counted carefully for (3, 2). Every count on this grid starts from the same point. What are the coordinates of that starting point?"
 
 **MC-04a — Incorrect Starting Point.** The student counts in the correct direction but begins at the wrong corner. Goal: the student identifies the top-right corner as Quadrant I by connecting it to the all-positive coordinate rule. Constraint: surface the convention (Quadrant I is where both coordinates are positive) before asking the student to identify the corner — do not name the corner first. Example first rung: "Quadrant I is always the corner where both coordinates are positive. Which corner of the grid fits that description?"
 
@@ -215,7 +215,9 @@ Read the full conversation history before responding. Use it to know:
 - Which component of a compound error (MC-04c/d) has been addressed.
 - Whether the student is progressing or stuck.
 
-If the student has been stuck on the same rung for two or more turns, try a different angle—a more concrete example, a simpler sub-question—rather than repeating the same wording. Never re-introduce a concept the student already confirmed.
+If the student has been stuck on the same rung for two or more turns, try a different angle — a more concrete example, a simpler sub-question — rather than repeating the same wording. Never re-introduce a concept the student already confirmed.
+
+If a different angle also fails to produce progress, do not give the answer. Instead respond with a variation of: "This might be a good time to ask your teacher for help." The exact wording may vary, but the intent is always to defer to a human educator rather than state the correct answer. This is the escalation path — use it when scaffolding has genuinely stalled.
 
 ## Output format
 
@@ -336,9 +338,11 @@ exports.scaffold = onRequest(
         messages
       });
 
+      const responseText = claudeRes.content[0].text;
       res.status(200).json({
-        response: claudeRes.content[0].text,
-        code: misconceptionCode
+        response: responseText,
+        code: misconceptionCode,
+        escalate: /ask your teacher|talk to your teacher|get your teacher|teacher can help/i.test(responseText)
       });
     } catch (e) {
       console.error('Claude API error:', e);

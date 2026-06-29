@@ -63,10 +63,27 @@ Write the Claude system prompt that drives scaffolding response generation. The 
 
 ---
 
-## 8. Bot UI
-The chat interface surfaced to the student, wired to the Firebase proxy, displaying disambiguation lists and scaffolding responses.
+## ✅ 8. Target Generator
+A JS module that generates a randomized target sequence each session, replacing the hard-coded array in plotting-grid.html. Prevents coordinate memorization across sessions and ensures each MC code remains reachable on multiple targets.
+
+**Artifact:** `src/js/target-generator.js`, `src/js/tests/test-target-generator.js`
+
+**Category structure (fixed; values randomized):**
+- Slot 1 — Q1: x ∈ [1,5], y ∈ [1,5], x ≠ y
+- Slot 2 — Q2: x ∈ [−5,−1], y ∈ [1,5]
+- Slot 3 — Q4: x ∈ [1,5], y ∈ [−5,−1]
+- Slot 4 — Y-axis: x = 0, y ∈ [−5,−1] ∪ [1,5]
+- Slot 5 — X-axis: y = 0, x ∈ [−5,−1] ∪ [1,5]
+- Slot 6 — Q3: x ∈ [−5,−1], y ∈ [−5,−1]
 
 ---
 
-## 9. Adaptive Response *(backlog)*
-Update the plotting grid and misconception detection to handle repeated incorrect answers — correct answers advance, incorrect answers repeat, three consecutive misses trigger bot intervention. Open questions around "type" definition and build-order sequencing are documented but unresolved.
+## ✅ 9. Bot UI
+The chat interface surfaced to the student, wired to the Firebase proxy, displaying disambiguation lists and scaffolding responses. Includes adaptive trigger logic: same MC code on two different targets in a session opens Hegemon on the second occurrence (Approach 1). Student advances immediately after a wrong answer unless Hegemon triggers.
+
+**Approach 2 (deferred — comparison testing):** On wrong answer, show both "Try again" (retry same target) and "Next question" (advance) buttons. Deferred pending user research on which approach produces better learning outcomes.
+
+---
+
+## 10. Adaptive Response *(backlog)*
+Three-miss intervention, correct-advances/incorrect-repeats drill loop, and question generator integration with session state. Open questions around intervention timing and drill sequencing are documented but unresolved.
