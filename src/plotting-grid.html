@@ -122,6 +122,8 @@
   .hit:hover{fill:var(--y-tint)}
   .locked .hit{cursor:default}
   .locked .hit:hover{fill:transparent}
+  .hg-submode .hit{cursor:crosshair}
+  .hg-submode .hit:hover{fill:rgba(46,100,230,.12)}
   .cursor-ring{fill:none;stroke:var(--focus);stroke-width:2;opacity:0;pointer-events:none;transition:opacity .12s}
   .marker{fill:var(--ink);stroke:#fff;stroke-width:2;pointer-events:none;opacity:0;transition:opacity .12s}
 
@@ -188,7 +190,7 @@
     <!-- live task -->
     <div id="task">
       <div class="taskbar">
-        <p class="progress" id="progress">Point 1 of 6</p>
+        <p class="progress" id="progress">1 of 6</p>
       </div>
       <p class="prompt">Plot the point <span id="target"></span></p>
       <p class="hint">Click an intersection on the grid. Or focus the grid and use arrow keys, then Enter.</p>
@@ -201,8 +203,7 @@
       <p class="status" id="status" role="status">No point placed yet.</p>
 
       <div class="controls">
-        <button class="btn btn-primary" id="submit" disabled>Submit point</button>
-        <button class="btn btn-next" id="next">Next point</button>
+        <button class="btn btn-primary" id="submit" disabled>Submit</button>
       </div>
 
       <!-- capture-only emit; reveals what was recorded, never whether it was right -->
@@ -282,7 +283,6 @@
   var elProg   = document.getElementById("progress");
   var elStatus = document.getElementById("status");
   var btnSubmit= document.getElementById("submit");
-  var btnNext  = document.getElementById("next");
   var readout  = document.getElementById("readout");
   var roCoords = document.getElementById("ro-coords");
   var elTask   = document.getElementById("task");
@@ -297,8 +297,16 @@
   var submissions = [];       // capture log
   var marker, cursorRing;     // persistent svg nodes
   var cursor = {x:0, y:0};    // keyboard cursor position
-  var mcErrorCount = {};      // { code: number } — errors per misconception code this session
-  var mcTriggered = {};       // { code: true } — codes that have already triggered Hegemon
+  var mcErrorCount = {};      // { group: number } — errors per misconception group this session
+  var mcTriggered = {};       // { group: true } — groups that have already triggered Hegemon
+  var subAnswerMode = false;  // grid is accepting a Hegemon sub-answer click, not a full submission
+
+  // MC-03 (origin/offset) and MC-08 (axis collapse) can both result from the
+  // same counting error: an off-by-one offset that happens to land on an axis
+  // fires MC-08 instead of MC-03. Grouped so the cross-target trigger still
+  // recognizes it as one recurring pattern.
+  var ERROR_GROUP = { 'MC-03': 'MC-03/08', 'MC-08': 'MC-03/08' };
+  function errorGroupFor(code) { return ERROR_GROUP[code] || code; }
 
   /* ---- bot init ---- */
   HegemonBot.init({
@@ -336,8 +344,6 @@
       svg.appendChild(txt(svgEl("text",{x:X(j),y:Y(0)+15,"text-anchor":"middle",class:"tick"}), fmt(j)));
       svg.appendChild(txt(svgEl("text",{x:X(0)-9,y:Y(j)+4,"text-anchor":"end",class:"tick"}), fmt(j)));
     }
-    svg.appendChild(txt(svgEl("text",{x:X(RANGE)-2,y:Y(0)-9,"text-anchor":"end",class:"axis-label",fill:"var(--x)"}),"x"));
-    svg.appendChild(txt(svgEl("text",{x:X(0)+9,y:Y(RANGE)+4,"text-anchor":"start",class:"axis-label",fill:"var(--y)"}),"y"));
 
     // clickable lattice points
     for (var gx=-RANGE; gx<=RANGE; gx++){
@@ -357,6 +363,14 @@
 
   /* ---- placing a point ---- */
   function place(gx, gy){
+    if (subAnswerMode) {
+      // Grid is in Hegemon sub-answer mode: place marker and notify bot, no submission flow.
+      marker.setAttribute("cx", X(gx));
+      marker.setAttribute("cy", Y(gy));
+      marker.style.opacity = 1;
+      document.dispatchEvent(new CustomEvent('hegemon:grid-placed', {detail:{x:gx, y:gy}}));
+      return;
+    }
     if (locked) return;
     placed = {x:gx, y:gy};
     marker.setAttribute("cx", X(gx));
@@ -377,7 +391,7 @@
     cursorRing.style.opacity = 1;
   }
   svg.addEventListener("keydown", function(e){
-    if (locked) return;
+    if (!subAnswerMode && locked) return;
     var moved = true;
     switch(e.key){
       case "ArrowLeft":  cursor.x = Math.max(-RANGE, cursor.x-1); break;
@@ -417,10 +431,11 @@
     // Normal attempt tracking
     if (!isCorrect) {
       var code = HegemonDetect.detectMisconception(record);
-      if (code && !mcTriggered[code]) {
-        mcErrorCount[code] = (mcErrorCount[code] || 0) + 1;
-        if (mcErrorCount[code] >= 2) {
-          mcTriggered[code] = true;
+      var group = code ? errorGroupFor(code) : null;
+      if (group && !mcTriggered[group]) {
+        mcErrorCount[group] = (mcErrorCount[group] || 0) + 1;
+        if (mcErrorCount[group] >= 2) {
+          mcTriggered[group] = true;
           var ctx = HegemonMarkers.snapshot();
           HegemonBot.open({
             misconceptionCode: code,
@@ -455,20 +470,36 @@
     svg.classList.add("locked");
     btnSubmit.disabled = true;
     elStatus.textContent = "Recorded.";
-    btnNext.textContent = (idx === TARGETS.length-1) ? "Finish" : "Next point";
-    btnNext.style.display = "inline-block";
-    btnNext.focus();
+
+    // Auto-advance unless Hegemon opened — if so, it drives advancement via hegemon:advance.
+    if (!HegemonBot.isOpen()) {
+      if (idx === TARGETS.length - 1) { finish(); } else { idx++; loadTarget(); }
+    }
   });
 
-  /* ---- advance ---- */
-  btnNext.addEventListener("click", function(){
-    if (idx === TARGETS.length-1){ finish(); return; }
-    idx++;
-    loadTarget();
+  /* ---- Hegemon-driven advancement (fires after notifyCorrect resolves) ---- */
+  document.addEventListener('hegemon:advance', function(){
+    if (idx === TARGETS.length - 1) { finish(); } else { idx++; loadTarget(); }
+  });
+
+  /* ---- Grid sub-answer mode: activated by [GRID_PROMPT] in bot response ---- */
+  document.addEventListener('hegemon:grid-prompt', function(){
+    subAnswerMode = true;
+    marker.style.opacity = 0;
+    svg.classList.add('hg-submode');
+    elStatus.textContent = 'Click the grid to place your answer.';
+  });
+
+  document.addEventListener('hegemon:grid-done', function(){
+    subAnswerMode = false;
+    marker.style.opacity = 0;
+    svg.classList.remove('hg-submode');
+    elStatus.textContent = 'Recorded.';
   });
 
   function loadTarget(){
     var t = TARGETS[idx];
+    HegemonBot.reset();
     placed = null;
     locked = false;
     cursor = {x:0, y:0};
@@ -476,9 +507,8 @@
     marker.style.opacity = 0;
     cursorRing.style.opacity = 0;
     readout.style.display = "none";
-    btnNext.style.display = "none";
     btnSubmit.disabled = true;
-    elProg.textContent = "Point "+(idx+1)+" of "+TARGETS.length;
+    elProg.textContent = (idx+1)+" of "+TARGETS.length;
     elTarget.innerHTML =
       "<span class='pair'>(<span class='x'>"+fmt(t.x)+"</span>, <span class='y'>"+fmt(t.y)+"</span>)</span>";
     elStatus.textContent = "No point placed yet.";

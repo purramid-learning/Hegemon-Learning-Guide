@@ -5,11 +5,17 @@
  * renders the conversation, and handles retry and teacher-escalation flows.
  *
  * Usage:
- *   HegemonBot.init({ functionUrl, onRetry })
- *   HegemonBot.open({ misconceptionCode, coords, markerContext })
+ *   HegemonBot.init({ functionUrl })
+ *   HegemonBot.open({ misconceptionCode, coords, markerContext })  — starts a NEW conversation
  *   HegemonBot.isOpen()  → boolean
  *   HegemonBot.notifyCorrect()
  *   HegemonBot.notifyWrong(code)
+ *   HegemonBot.reset()   — ends the current conversation (call when advancing to a new target)
+ *
+ * No modal overlay: this is a docked side panel, not a dialog. The host page
+ * (the assessment grid) stays interactive while the panel is open. The header
+ * close button hides the panel without losing the transcript — the floating
+ * trigger button reopens an in-progress conversation exactly as left.
  *
  * Fires a 'hegemon:retry' CustomEvent on document when the student clicks
  * "Try again" — the grid listens for this to re-enable submission.
@@ -25,7 +31,7 @@
 
   /* ---- state ---- */
   var functionUrl = '';
-  var panelEl, transcriptEl, inputEl, sendBtn, actionsEl, triggerBtn, overlayEl;
+  var panelEl, transcriptEl, inputEl, sendBtn, actionsEl, triggerBtn;
   var conversationHistory = [];
   var currentCode = null;
   var currentCoords = null;
@@ -33,13 +39,14 @@
   var escalated = false;
   var retryUsed = false;
   var open = false;
+  var hasConversation = false;
+  var gridPromptActive = false;
+  var pendingGridCoords = null;
+  var gridSubmitBtn = null;
+  var introShown = false;
 
   /* ---- CSS ---- */
   var STYLES = [
-    '.hg-overlay{position:fixed;inset:0;background:rgba(22,38,61,.25);opacity:0;',
-    'transition:opacity .2s;pointer-events:none;z-index:100}',
-    '.hg-overlay.hg-overlay--on{opacity:1;pointer-events:auto}',
-
     '.hg-panel{position:fixed;top:0;right:0;bottom:0;width:380px;max-width:100vw;',
     'background:var(--surface,#fff);border-left:1px solid var(--line,#e6edf4);',
     'box-shadow:-8px 0 32px -8px rgba(22,38,61,.18);display:flex;flex-direction:column;',
@@ -50,9 +57,8 @@
     'padding:16px 20px;border-bottom:1px solid var(--line,#e6edf4);',
     'background:var(--ink,#16263d);color:#fff;flex-shrink:0}',
     '.hg-panel__title{font-family:var(--font-display,"Space Grotesk",system-ui,sans-serif);',
-    'font-weight:700;font-size:1rem;letter-spacing:.01em}',
-    '.hg-panel__badge{font-family:var(--font-mono,"Space Mono",monospace);font-size:.68rem;',
-    'letter-spacing:.1em;text-transform:uppercase;color:#9fb2c9;margin-left:10px}',
+    'font-weight:700;font-size:1rem;letter-spacing:.01em;',
+    'display:flex;align-items:center}',
     '.hg-close{background:none;border:none;color:#9fb2c9;cursor:pointer;font-size:1.1rem;',
     'padding:4px 8px;border-radius:6px;line-height:1}',
     '.hg-close:hover{color:#fff;background:rgba(255,255,255,.1)}',
@@ -71,7 +77,16 @@
     'align-self:flex-start;border-radius:4px 12px 12px 12px}',
     '.hg-msg--success{background:var(--y-tint,#e3f3f1);border:1px solid var(--y,#0e9488);',
     'align-self:flex-start;border-radius:4px 12px 12px 12px}',
-    '.hg-msg--loading{color:var(--ink-soft,#54647a);font-style:italic;align-self:flex-start}',
+    '.hg-msg--action{color:var(--ink-soft,#54647a);font-style:italic;',
+    'align-self:flex-end;font-size:.9rem;padding:6px 14px}',
+    '.hg-msg--loading{color:var(--ink-soft,#54647a);align-self:flex-start;',
+    'display:flex;gap:3px;padding:14px}',
+    '.hg-dot{width:6px;height:6px;border-radius:50%;background:var(--ink-soft,#9fb2c9);',
+    'animation:hg-blink 1.4s infinite both}',
+    '.hg-dot:nth-child(2){animation-delay:.2s}',
+    '.hg-dot:nth-child(3){animation-delay:.4s}',
+    '@keyframes hg-blink{0%,80%,100%{opacity:.25;transform:scale(.85)}',
+    '40%{opacity:1;transform:scale(1)}}',
 
     '.hg-panel__footer{border-top:1px solid var(--line,#e6edf4);padding:14px 16px;',
     'flex-shrink:0;display:flex;flex-direction:column;gap:10px}',
@@ -96,14 +111,19 @@
     '.hg-btn-send:disabled{opacity:.4;cursor:default}',
     '.hg-btn-send:focus-visible,.hg-btn-retry:focus-visible,.hg-close:focus-visible{',
     'outline:2px solid var(--focus,#2f6df0);outline-offset:2px}',
+    '.hg-btn-grid-submit{font-family:var(--font-display,"Space Grotesk",sans-serif);font-weight:700;',
+    'font-size:.9rem;padding:9px 18px;border:none;border-radius:9px;',
+    'background:var(--focus,#2f6df0);color:#fff;cursor:pointer;',
+    'transition:background .15s,transform .12s}',
+    '.hg-btn-grid-submit:hover:not(:disabled){background:#2258c8;transform:translateY(-1px)}',
+    '.hg-btn-grid-submit:disabled{opacity:.4;cursor:default;transform:none}',
+    '.hg-btn-grid-submit:focus-visible{outline:2px solid #1a3f8f;outline-offset:2px}',
 
     '.hg-trigger{position:fixed;bottom:28px;right:28px;width:52px;height:52px;',
-    'border-radius:50%;background:var(--ink,#16263d);color:#fff;border:none;',
-    'cursor:pointer;font-size:1.4rem;box-shadow:0 4px 16px -4px rgba(22,38,61,.4);',
-    'transition:background .15s,transform .12s;z-index:99;',
-    'display:flex;align-items:center;justify-content:center}',
-    '.hg-trigger:hover{background:#22384f;transform:scale(1.06)}',
-    '.hg-trigger:focus-visible{outline:3px solid var(--focus,#2f6df0);outline-offset:3px}',
+    'border:none;padding:0;background:none;cursor:pointer;',
+    'transition:transform .12s;z-index:99}',
+    '.hg-trigger:hover{transform:scale(1.06)}',
+    '.hg-trigger:focus-visible{outline:3px solid var(--focus,#2f6df0);outline-offset:3px;border-radius:50%}',
 
     '@media(max-width:480px){.hg-panel{width:100vw;border-left:none}',
     '.hg-trigger{bottom:18px;right:18px}}'
@@ -119,11 +139,6 @@
   function buildDOM() {
     injectStyles();
 
-    overlayEl = document.createElement('div');
-    overlayEl.className = 'hg-overlay';
-    overlayEl.addEventListener('click', close);
-    document.body.appendChild(overlayEl);
-
     panelEl = document.createElement('div');
     panelEl.className = 'hg-panel';
     panelEl.setAttribute('role', 'complementary');
@@ -131,13 +146,22 @@
 
     var header = document.createElement('div');
     header.className = 'hg-panel__header';
-    header.innerHTML =
-      '<span class="hg-panel__title">Hegemon<span class="hg-panel__badge">Help</span></span>';
+    var titleEl = document.createElement('span');
+    titleEl.className = 'hg-panel__title';
+    var logoImg = document.createElement('img');
+    logoImg.src = 'images/hegemon-logo.png';
+    logoImg.alt = '';
+    logoImg.width = 28;
+    logoImg.height = 28;
+    logoImg.style.cssText = 'display:block;margin-right:10px;flex-shrink:0';
+    titleEl.appendChild(logoImg);
+    titleEl.appendChild(document.createTextNode('Hegemon'));
+    header.appendChild(titleEl);
     var closeBtn = document.createElement('button');
     closeBtn.className = 'hg-close';
     closeBtn.setAttribute('aria-label', 'Close help panel');
     closeBtn.textContent = '✕';
-    closeBtn.addEventListener('click', close);
+    closeBtn.addEventListener('click', hidePanel);
     header.appendChild(closeBtn);
     panelEl.appendChild(header);
 
@@ -179,25 +203,43 @@
     triggerBtn = document.createElement('button');
     triggerBtn.className = 'hg-trigger';
     triggerBtn.setAttribute('aria-label', 'Ask Hegemon for help');
-    triggerBtn.innerHTML = '&#x3F;';
+    var triggerImg = document.createElement('img');
+    triggerImg.src = 'images/hegemon-trigger.png';
+    triggerImg.alt = '';
+    triggerImg.width = 52;
+    triggerImg.height = 52;
+    triggerBtn.appendChild(triggerImg);
     triggerBtn.addEventListener('click', function () {
-      if (open) { close(); } else { openManual(); }
+      if (open) {
+        hidePanel();
+      } else if (hasConversation) {
+        showPanel(); // reopen with transcript intact, no re-fetch
+      } else {
+        openManual();
+      }
     });
     document.body.appendChild(triggerBtn);
   }
 
-  /* ---- panel open / close ---- */
+  /* ---- panel open / hide / reset ----
+     hidePanel:   visually collapses the panel, transcript and history untouched.
+     resetConversation: fully clears state — used when a NEW misconception
+       conversation starts, after a resolved (correct) answer, or when the
+       student advances to a new target via the public reset() call. */
   function showPanel() {
     open = true;
     panelEl.classList.add('hg-panel--open');
-    overlayEl.classList.add('hg-overlay--on');
-    inputEl.focus();
+    if (!inputEl.disabled) inputEl.focus();
   }
 
-  function close() {
+  function hidePanel() {
     open = false;
     panelEl.classList.remove('hg-panel--open');
-    overlayEl.classList.remove('hg-overlay--on');
+  }
+
+  function resetConversation() {
+    open = false;
+    panelEl.classList.remove('hg-panel--open');
     transcriptEl.innerHTML = '';
     actionsEl.innerHTML = '';
     conversationHistory = [];
@@ -205,6 +247,11 @@
     currentCoords = null;
     escalated = false;
     retryUsed = false;
+    hasConversation = false;
+    gridPromptActive = false;
+    pendingGridCoords = null;
+    hideGridSubmitButton();
+    document.dispatchEvent(new CustomEvent('hegemon:grid-done'));
   }
 
   /* ---- messages ---- */
@@ -241,6 +288,29 @@
     if (btn) btn.remove();
   }
 
+  function appendGridSubAnswer(text) {
+    var el = document.createElement('div');
+    el.className = 'hg-msg hg-msg--action';
+    var em = document.createElement('em');
+    em.textContent = text;
+    el.appendChild(em);
+    transcriptEl.appendChild(el);
+    transcriptEl.scrollTop = transcriptEl.scrollHeight;
+  }
+
+  function appendLoadingMessage() {
+    var el = document.createElement('div');
+    el.className = 'hg-msg hg-msg--loading';
+    for (var i = 0; i < 3; i++) {
+      var dot = document.createElement('span');
+      dot.className = 'hg-dot';
+      el.appendChild(dot);
+    }
+    transcriptEl.appendChild(el);
+    transcriptEl.scrollTop = transcriptEl.scrollHeight;
+    return el;
+  }
+
   /* ---- Cloud Function call ---- */
   function fetchResponse(userText) {
     if (userText) {
@@ -249,7 +319,7 @@
     }
 
     setInputEnabled(false);
-    var loadingEl = appendMessage('...', 'loading');
+    var loadingEl = appendLoadingMessage();
 
     var body = {
       misconceptionCode: currentCode,
@@ -271,6 +341,11 @@
       .then(function (r) { return r.json(); })
       .then(function (data) {
         loadingEl.remove();
+        if (!data.response) {
+          appendMessage('Something went wrong. Please try again.', 'bot');
+          setInputEnabled(true);
+          return;
+        }
         var type = data.escalate ? 'escalate' : 'bot';
         conversationHistory.push({ role: 'assistant', content: data.response });
         appendMessage(data.response, type);
@@ -279,6 +354,12 @@
           escalated = true;
           hideRetryButton();
           setInputEnabled(false);
+        } else if (data.gridPrompt) {
+          gridPromptActive = true;
+          pendingGridCoords = null;
+          setInputEnabled(false);
+          document.dispatchEvent(new CustomEvent('hegemon:grid-prompt'));
+          showGridSubmitButton();
         } else {
           setInputEnabled(true);
           showRetryButton();
@@ -298,41 +379,97 @@
     fetchResponse(text);
   }
 
+  /* ---- grid sub-answer buttons ---- */
+  function showGridSubmitButton() {
+    if (gridSubmitBtn) return;
+    gridSubmitBtn = document.createElement('button');
+    gridSubmitBtn.className = 'hg-btn-grid-submit';
+    gridSubmitBtn.textContent = 'Submit';
+    gridSubmitBtn.disabled = true;
+    gridSubmitBtn.addEventListener('click', handleGridSubmit);
+    actionsEl.appendChild(gridSubmitBtn);
+  }
+
+  function hideGridSubmitButton() {
+    if (gridSubmitBtn) { gridSubmitBtn.remove(); gridSubmitBtn = null; }
+  }
+
+  function handleGridSubmit() {
+    if (!pendingGridCoords) return;
+    var coords = pendingGridCoords;
+    var displayText = 'selected (' + coords.x + ', ' + coords.y + ') on the grid';
+    var apiText = displayText;
+    pendingGridCoords = null;
+    gridPromptActive = false;
+    hideGridSubmitButton();
+    document.dispatchEvent(new CustomEvent('hegemon:grid-done'));
+    // Add to history as plain text for Claude; display as italic action without "I".
+    conversationHistory.push({ role: 'user', content: apiText });
+    appendGridSubAnswer(displayText);
+    fetchResponse(null);
+  }
+
   /* ---- public API ---- */
   function init(config) {
     functionUrl = config.functionUrl || '';
     buildDOM();
+    document.addEventListener('hegemon:grid-placed', function(e) {
+      if (!gridPromptActive) return;
+      pendingGridCoords = e.detail;
+      if (gridSubmitBtn) gridSubmitBtn.disabled = false;
+    });
   }
 
   function openWithParams(params) {
-    if (open) close();
+    if (hasConversation) resetConversation();
     currentCode = params.misconceptionCode || null;
     currentCoords = params.coords || null;
     currentMarkerContext = params.markerContext || null;
-    conversationHistory = [];
     escalated = false;
     retryUsed = false;
     transcriptEl.innerHTML = '';
     actionsEl.innerHTML = '';
+    // Seed an opening user message so the Cloud Function receives a non-empty history.
+    // Not displayed — Claude's first response is the student's first visible message.
+    conversationHistory = [{ role: 'user', content: 'I need help with this one. I got it wrong but I\'m not sure why.' }];
+    hasConversation = true;
+    introShown = true; // auto-trigger counts as Athena having been "present"
     showPanel();
-    fetchResponse(null); // bot opens with first message
+    fetchResponse(null);
   }
 
   function openManual() {
-    // Manual trigger — use last known context if available, otherwise unclassified
-    openWithParams({
-      misconceptionCode: currentCode,
-      coords: currentCoords,
-      markerContext: currentMarkerContext
-    });
+    if (!introShown) {
+      // First time the student opens the panel this session, unprompted.
+      introShown = true;
+      hasConversation = true;
+      conversationHistory = [];
+      escalated = false;
+      retryUsed = false;
+      transcriptEl.innerHTML = '';
+      actionsEl.innerHTML = '';
+      showPanel();
+      appendMessage('Hi, I\'m Athena!', 'bot');
+      setInputEnabled(true);
+    } else {
+      openWithParams({
+        misconceptionCode: currentCode,
+        coords: currentCoords,
+        markerContext: currentMarkerContext
+      });
+    }
   }
 
   function notifyCorrect() {
     if (!open) return;
     appendMessage('Nice work. Give the next one a try.', 'success');
     hideRetryButton();
+    hideGridSubmitButton();
     setInputEnabled(false);
-    setTimeout(close, 2200);
+    setTimeout(function() {
+      resetConversation();
+      document.dispatchEvent(new CustomEvent('hegemon:advance'));
+    }, 2200);
   }
 
   function notifyWrong(code) {
@@ -348,7 +485,8 @@
   return {
     init: init,
     open: openWithParams,
-    close: close,
+    close: hidePanel,
+    reset: resetConversation,
     isOpen: function () { return open; },
     notifyCorrect: notifyCorrect,
     notifyWrong: notifyWrong

@@ -87,3 +87,29 @@ The chat interface surfaced to the student, wired to the Firebase proxy, display
 
 ## 10. Adaptive Response *(backlog)*
 Three-miss intervention, correct-advances/incorrect-repeats drill loop, and question generator integration with session state. Open questions around intervention timing and drill sequencing are documented but unresolved.
+
+---
+
+## Design Decisions
+
+### Grid Interaction as Hegemon Sub-Answer *(implemented)*
+
+**What:** Physical demonstration on the grid as a general feedback modality — not specific to any one MC code. When scaffolding a spatial concept, having the student click the grid is more instructive than having them describe the answer in text. Claude signals grid interaction is needed via the `[GRID_PROMPT]` token; the system unlocks the grid, shows a disabled Submit button in the panel, and routes the click back into the conversation without triggering `recordSubmission`.
+
+**Principle:** Interaction yields greater comprehension than text inputs for spatial reasoning tasks. `[GRID_PROMPT]` is available to Claude for any question where physical demonstration is better than verbal description — locating a point, isolating a single-axis move, showing a direction, or indicating a quadrant position.
+
+**Current application by MC code:**
+- MC-03: Three-step guided re-trace (origin → x-axis stop → final point) before formal retry.
+- MC-01: Demonstrate x-value placement alone before combining both moves.
+- MC-02: Click the corrected destination after stating directions in words.
+- MC-06: Click the corrected destination after resolving the sign question.
+- MC-07: Click the corrected axis position after stating what 0 means as a movement.
+- MC-08: Click the correct destination after identifying the missing move.
+
+---
+
+### Accessible Navigation *(deferred)*
+
+**What:** Keyboard and screen-reader navigation for the full tutoring flow — grid interaction, Hegemon panel, and all controls.
+
+**Why deferred:** Core interaction model (grid click + Hegemon chat) must be stable before layering accessibility. The SVG grid already has basic keyboard support (arrow keys, Enter/Space to place); the Hegemon panel uses semantic HTML with `aria-label` and `aria-live`. Full compliance requires: focus management between grid and panel during sub-answer mode, ARIA roles for the chat transcript, and keyboard equivalents for grid sub-answer submission.
