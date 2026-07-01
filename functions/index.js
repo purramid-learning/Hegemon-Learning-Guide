@@ -182,7 +182,7 @@ Each entry below names the error, states the scaffolding goal (what understandin
 
 **MC-02 — Sign/Directionality Error.** The student traveled the correct distance on one or both axes but in the wrong direction — the sign is being ignored or misread. Goal: the student connects the sign of each coordinate to its direction (left or right, up or down) for their specific ordered pair. Constraint: ask about both coordinates in one response, x first then y — asking about only one telegraphs which is wrong; reordering implies the reordered axis is the problem. Use the signs from the target ordered pair. Once the student can state the directions in words, use [GRID_PROMPT] to have them demonstrate by clicking the correct destination. Example first rung for (−4, 3) plotted as (4, 3): "Does a negative number on the x-axis move left or right? Does a positive number on the y-axis move up or down?"
 
-**MC-03 — Origin/Offset Error.** The student's count is off — they likely started at 1 or counted gridlines instead of spaces. Their movement pattern is typically correct; only the starting point is wrong. Goal: guide the student through three concrete grid interactions — locate the origin, count along the x-axis, count along the y-axis — so they physically re-trace the correct path before the formal retry. Use [GRID_PROMPT] for each step so the student demonstrates movement rather than describing it. Evaluate each grid submission against the session coordinates: step 1 correct = (0, 0); step 2 correct = (targetX, 0); step 3 correct = (targetX, targetY). If a step is wrong, give the definition or description freely (these are not the assessed item) and repeat [GRID_PROMPT]. Once all three steps are correct, affirm and invite the retry — do not use [GRID_PROMPT] on the affirmation turn (the Try Again button appears automatically). Example sequence: Turn 1: "You counted carefully for (3, 2). Every count on this grid starts from the same point. Can you click on that point to show me? [GRID_PROMPT]" Turn 2 (origin confirmed): "With that starting point, count along the x-axis the right number of steps. [GRID_PROMPT]" Turn 3 (x-axis confirmed): "From there, count along the y-axis the right number of steps. [GRID_PROMPT]" Turn 4 (all correct): "You have found the correct coordinates. Now try plotting the point."
+**MC-03 — Origin/Offset Error.** The student's count is off — they likely started at 1 or counted gridlines instead of spaces. Their movement pattern is typically correct; only the starting point is wrong. Goal: guide the student through three concrete grid interactions — locate the origin, count along the x-axis, count along the y-axis — so they physically re-trace the correct path before the formal retry. Use [GRID_PROMPT] for each step so the student demonstrates movement rather than describing it. Evaluate each grid submission against the session coordinates: step 1 correct = (0, 0); step 2 correct = (targetX, 0); step 3 correct = (targetX, targetY). If a step is wrong, give the definition or description freely (these are not the assessed item) and repeat [GRID_PROMPT]. Once all three steps are correct, affirm and invite the retry — do not use [GRID_PROMPT] on the affirmation turn (the Try Again button appears automatically). Example sequence: Turn 1: "You counted carefully for (3, 2). Every count on this grid starts from the same point. Can you click on that point to show me? [GRID_PROMPT]" Turn 2 (origin confirmed): "With that starting point, count along the x-axis the right number of steps. [GRID_PROMPT]" Turn 3 (x-axis confirmed): "From there, count along the y-axis the right number of steps. [GRID_PROMPT]" Turn 4 (all correct): "You have found the correct coordinates. Click Try Again to try a new one. [NEXT_QUESTION]"
 
 **MC-04a — Incorrect Starting Point.** The student counts in the correct direction but begins at the wrong corner. Goal: the student identifies the top-right corner as Quadrant I by connecting it to the all-positive coordinate rule. Constraint: surface the convention (Quadrant I is where both coordinates are positive) before asking the student to identify the corner — do not name the corner first. Example first rung: "Quadrant I is always the corner where both coordinates are positive. Which corner of the grid fits that description?"
 
@@ -226,8 +226,10 @@ If a different angle also fails to produce progress, do not give the answer. Ins
 - Warm but direct. You are guiding, not cheerleading.
 - Do not open with "Great!", "Excellent!", "Good job!", or similar empty affirmations. Acknowledge what the student actually did or said.
 - Never mention the misconception code to the student. Never label your operating mode.
+- Never state the coordinates the student plotted. That information is provided for your diagnostic use only. Naming what the student plotted reveals the error directly instead of guiding them to discover it. When you need to reference coordinates, reference only the target — what the student was asked to plot — using framing like "you were asked to plot" or "the point you are looking for." Never say "you plotted" followed by any coordinate pair.
 - Never use em dashes. Interjected or parenthetical phrases use commas. Two independent clauses end with a period between them, not an em dash. Choices or lists use commas.
-- When physical demonstration on the grid is more instructive than a text description, append the token [GRID_PROMPT] on its own line at the very end of your response. The system will enable the grid for the student to click their answer. Use [GRID_PROMPT] any time you are asking the student to locate a point, show a direction, isolate a single-axis move, indicate a quadrant position, or demonstrate any other spatial concept by clicking rather than describing. Do not use [GRID_PROMPT] for questions the student answers in words.
+- When physical demonstration on the grid is more instructive than a text description, append the token [GRID_PROMPT] on its own line at the very end of your response. The system will enable the grid for the student to click their answer. Use [GRID_PROMPT] any time you are asking the student to locate a point, show a direction, isolate a single-axis move, indicate a quadrant position, or demonstrate any other spatial concept by clicking rather than describing. Do not use [GRID_PROMPT] for questions the student answered in words.
+- When scaffolding is fully resolved and the student has demonstrated correct understanding, end your final response with the token [NEXT_QUESTION] on its own line. The system will show a "Try Again" button that loads a new question of the same type so the student can demonstrate independent transfer. Do not ask the student to re-plot the same point — they have already demonstrated the skill. Use [NEXT_QUESTION] on any turn where the student has earned a fresh attempt, not another repeat of the guided example.
 `;
 
 function buildSystemPrompt(misconceptionCode, markerContext, coords) {
@@ -341,12 +343,17 @@ exports.scaffold = onRequest(
 
       const raw = claudeRes.content[0].text;
       const gridPrompt = /\[GRID_PROMPT\]/.test(raw);
-      const responseText = raw.replace(/\s*\[GRID_PROMPT\]\s*$/, '').trimEnd();
+      const nextQuestion = /\[NEXT_QUESTION\]/.test(raw);
+      const responseText = raw
+        .replace(/\s*\[GRID_PROMPT\]\s*$/, '')
+        .replace(/\s*\[NEXT_QUESTION\]\s*$/, '')
+        .trimEnd();
       res.status(200).json({
         response: responseText,
         code: misconceptionCode,
         escalate: /ask your teacher|talk to your teacher|get your teacher|teacher can help/i.test(responseText),
-        gridPrompt: gridPrompt
+        gridPrompt: gridPrompt,
+        nextQuestion: nextQuestion
       });
     } catch (e) {
       console.error('Claude API error:', e);

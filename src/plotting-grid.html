@@ -7,15 +7,6 @@
 <!--
   Hegemon Learning Guide · interactive plotting grid
   Student-facing entry point and the source of all detection inputs.
-
-  Scope of THIS page (locked with Joe):
-    · clickable / keyboard-navigable grid, integers -5..5
-    · a target the student is asked to plot, drawn from a coverage sequence
-    · a submit mechanism that CAPTURES + EMITS the result
-    · NO misconception detection here, NO Claude call here — see recordSubmission()
-
-  Design contract inherited from coordinate-plane-lesson.html:
-    x is coral, y is teal, structure in blueprint navy, graph-paper ground.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -132,7 +123,16 @@
     min-height:1.3em;margin:14px 0 0;font-size:.95rem;font-weight:600;
     color:var(--ink-soft);text-align:center;
   }
-  .controls{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:18px 0 0}
+
+  /* Three-column grid: Back | Submit (centered) | Next
+     max-width matches the SVG so outer edges align with the grid */
+  .controls{
+    display:grid;
+    grid-template-columns:1fr auto 1fr;
+    align-items:center;
+    max-width:404px;
+    margin:18px auto 0;
+  }
   .btn{
     font-family:var(--font-display);font-weight:700;font-size:1rem;
     border:none;border-radius:11px;padding:13px 28px;cursor:pointer;
@@ -142,8 +142,20 @@
   .btn-primary{background:var(--x);color:#fff}
   .btn-primary:hover:not(:disabled){background:#cf5230;transform:translateY(-1px)}
   .btn-primary:disabled{opacity:.4;cursor:default}
-  .btn-next{background:var(--ink);color:#fff;display:none}
-  .btn-next:hover{background:#22384f;transform:translateY(-1px)}
+
+  /* Back / Next navigation buttons — smaller, dark ink */
+  .btn-nav{
+    font-family:var(--font-display);font-weight:700;font-size:.82rem;
+    border:none;border-radius:9px;padding:9px 14px;cursor:pointer;
+    background:var(--ink);color:#fff;
+    display:inline-flex;align-items:center;gap:5px;
+    transition:transform .12s,background .15s;
+  }
+  .btn-nav:hover:not(:disabled){background:#22384f;transform:translateY(-1px)}
+  .btn-nav:disabled{opacity:.35;cursor:default;transform:none}
+  .btn-nav:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+  #nav-back{justify-self:start}
+  #nav-next{justify-self:end}
 
   /* ---------- emit readout (capture-only) ---------- */
   .readout{
@@ -170,7 +182,7 @@
   @media (max-width:560px){ body{font-size:16px} .panel{margin-top:-18px} }
   @media (prefers-reduced-motion:reduce){
     *{transition:none!important;scroll-behavior:auto!important}
-    .btn-primary:hover:not(:disabled),.btn-next:hover{transform:none}
+    .btn-primary:hover:not(:disabled),.btn-nav:hover:not(:disabled){transform:none}
   }
 </style>
 </head>
@@ -203,7 +215,9 @@
       <p class="status" id="status" role="status">No point placed yet.</p>
 
       <div class="controls">
+        <button class="btn-nav" id="nav-back" disabled aria-label="Go to previous question">&#9664; Back</button>
         <button class="btn btn-primary" id="submit" disabled>Submit</button>
+        <button class="btn-nav" id="nav-next" aria-label="Skip to next question">Next &#9654;</button>
       </div>
 
       <!-- capture-only emit; reveals what was recorded, never whether it was right -->
@@ -240,15 +254,6 @@
 
   /* ----------------------------------------------------------------
      Target sequence — randomized each session by target-generator.js.
-     Six slots, one per category, so every live MC code is reachable
-     on multiple targets within a session:
-       Slot 0  Q1  (x>0, y>0, x!=y)    MC-01, MC-03, MC-08
-       Slot 1  Q2  (x<0, y>0)          MC-01, MC-02, MC-03, MC-06, MC-08
-       Slot 2  Q4  (x>0, y<0)          MC-01, MC-02, MC-03, MC-06, MC-08
-       Slot 3  Y-axis (x=0, y!=0)       MC-07
-       Slot 4  X-axis (y=0, x!=0)       MC-07
-       Slot 5  Q3  (x<0, y<0)          MC-01, MC-02, MC-03, MC-06, MC-08
-     MC-04 requires a naming task; MC-05 out of scope for this demo.
   ---------------------------------------------------------------- */
   var TARGETS = TargetGenerator.generateTargets();
 
@@ -259,7 +264,7 @@
   var C = PAD + RANGE*U;
   function X(x){ return C + x*U; }
   function Y(y){ return C - y*U; }
-  function fmt(n){ return String(n).replace("-", "\u2212"); } // minus sign U+2212
+  function fmt(n){ return String(n).replace("-", "−"); }
 
   function svgEl(tag, attrs){
     var e = document.createElementNS(NS, tag);
@@ -278,48 +283,44 @@
   }
 
   /* ---- DOM ---- */
-  var svg      = document.getElementById("grid");
-  var elTarget = document.getElementById("target");
-  var elProg   = document.getElementById("progress");
-  var elStatus = document.getElementById("status");
-  var btnSubmit= document.getElementById("submit");
-  var readout  = document.getElementById("readout");
-  var roCoords = document.getElementById("ro-coords");
-  var elTask   = document.getElementById("task");
-  var elDone   = document.getElementById("done");
-  var doneCount= document.getElementById("done-count");
-  var btnRestart=document.getElementById("restart");
+  var svg       = document.getElementById("grid");
+  var elTarget  = document.getElementById("target");
+  var elProg    = document.getElementById("progress");
+  var elStatus  = document.getElementById("status");
+  var btnSubmit = document.getElementById("submit");
+  var btnBack   = document.getElementById("nav-back");
+  var btnNext   = document.getElementById("nav-next");
+  var readout   = document.getElementById("readout");
+  var roCoords  = document.getElementById("ro-coords");
+  var elTask    = document.getElementById("task");
+  var elDone    = document.getElementById("done");
+  var doneCount = document.getElementById("done-count");
+  var btnRestart= document.getElementById("restart");
 
   /* ---- state ---- */
   var idx = 0;
-  var placed = null;          // {x, y} or null
-  var locked = false;         // current target already submitted
-  var submissions = [];       // capture log
-  var marker, cursorRing;     // persistent svg nodes
-  var cursor = {x:0, y:0};    // keyboard cursor position
-  var mcErrorCount = {};      // { group: number } — errors per misconception group this session
-  var mcTriggered = {};       // { group: true } — groups that have already triggered Hegemon
-  var subAnswerMode = false;  // grid is accepting a Hegemon sub-answer click, not a full submission
+  var placed = null;          // {x, y} or null — current placed point
+  var locked = false;         // grid locked after submission
+  var submissions = [];       // full capture log
+  var marker, cursorRing;
+  var cursor = {x:0, y:0};
+  var subAnswerMode = false;
 
-  // MC-03 (origin/offset) and MC-08 (axis collapse) can both result from the
-  // same counting error: an off-by-one offset that happens to land on an axis
-  // fires MC-08 instead of MC-03. Grouped so the cross-target trigger still
-  // recognizes it as one recurring pattern.
+  var submittedIdxs = {};     // {idx: true} — questions with at least one submission
+  var placedByIdx   = {};     // {idx: {x,y}} — saved placed point per question (for Back)
+  var verificationMode = false; // true after [NEXT_QUESTION]: Submit becomes Retry (blue)
+
+  // Error tracking for adaptive Hegemon trigger
+  var mcErrorCount  = {};
+  var mcTriggered   = {};
+  var mcCountedAtIdx = {}; // {idx: true} — question already counted toward error total; prevents Back+resubmit double-counting
+  var currentTriggeredGroup = null;
   var ERROR_GROUP = { 'MC-03': 'MC-03/08', 'MC-08': 'MC-03/08' };
-  function errorGroupFor(code) { return ERROR_GROUP[code] || code; }
+  function errorGroupFor(code){ return ERROR_GROUP[code] || code; }
 
   /* ---- bot init ---- */
   HegemonBot.init({
     functionUrl: 'https://us-central1-hegemon-learning-guide.cloudfunctions.net/scaffold'
-  });
-
-  /* ---- retry handler (fired by HegemonBot when student clicks "Try again") ---- */
-  document.addEventListener('hegemon:retry', function () {
-    locked = false;
-    svg.classList.remove('locked');
-    btnSubmit.disabled = (placed === null);
-    btnNext.style.display = 'none';
-    elStatus.textContent = placed ? 'Point placed. Submit when ready.' : 'Click the grid to place your point.';
   });
 
   /* ---- build the static grid once ---- */
@@ -345,7 +346,6 @@
       svg.appendChild(txt(svgEl("text",{x:X(0)-9,y:Y(j)+4,"text-anchor":"end",class:"tick"}), fmt(j)));
     }
 
-    // clickable lattice points
     for (var gx=-RANGE; gx<=RANGE; gx++){
       for (var gy=-RANGE; gy<=RANGE; gy++){
         var hit = svgEl("circle",{cx:X(gx),cy:Y(gy),r:14,class:"hit"});
@@ -364,7 +364,6 @@
   /* ---- placing a point ---- */
   function place(gx, gy){
     if (subAnswerMode) {
-      // Grid is in Hegemon sub-answer mode: place marker and notify bot, no submission flow.
       marker.setAttribute("cx", X(gx));
       marker.setAttribute("cy", Y(gy));
       marker.style.opacity = 1;
@@ -407,18 +406,83 @@
   svg.addEventListener("blur", function(){ cursorRing.style.opacity = 0; });
 
   /* ----------------------------------------------------------------
-     SUBMIT  →  capture + emit.   This is the seam.
+     Navigation helpers
+  ---------------------------------------------------------------- */
+  function findNextTarget(fromIdx){
+    if (fromIdx + 1 < TARGETS.length) return fromIdx + 1;
+    // Wrap: find first unanswered question
+    for (var i = 0; i < TARGETS.length; i++){
+      if (!submittedIdxs[i]) return i;
+    }
+    return -1; // all done
+  }
+
+  function updateNavButtons(){
+    btnBack.disabled = (idx === 0);
+    btnNext.disabled = (idx >= TARGETS.length - 1);
+  }
+
+  /* loadTarget — reset grid to current idx.
+     Pass keepHegemon=true only for the Retry flow (Hegemon stays open). */
+  function loadTarget(keepHegemon){
+    var t = TARGETS[idx];
+    if (!keepHegemon) {
+      HegemonBot.reset();
+      verificationMode = false;
+      currentTriggeredGroup = null;
+      btnSubmit.textContent = 'Submit';
+      btnSubmit.style.background = '';   // reset to CSS coral
+    }
+    locked = false;
+    cursor = {x:0, y:0};
+    svg.classList.remove("locked", "hg-submode");
+    marker.style.opacity = 0;
+    cursorRing.style.opacity = 0;
+    readout.style.display = "none";
+    subAnswerMode = false;
+
+    if (placed) {
+      // Restore a saved point (Back navigation or Retry refresh)
+      marker.setAttribute("cx", X(placed.x));
+      marker.setAttribute("cy", Y(placed.y));
+      marker.style.opacity = 1;
+      btnSubmit.disabled = false;
+    } else {
+      btnSubmit.disabled = true;
+    }
+
+    elProg.textContent = (idx+1)+" of "+TARGETS.length;
+    elTarget.innerHTML =
+      "<span class='pair'>(<span class='x'>"+fmt(t.x)+"</span>, <span class='y'>"+fmt(t.y)+"</span>)</span>";
+    elStatus.textContent = placed ? "Point placed. Submit when ready." : "No point placed yet.";
+    updateNavButtons();
+  }
+
+  /* advance — record submission, move to next target (or finish) */
+  function advance(){
+    submittedIdxs[idx] = true;
+    placedByIdx[idx] = placed;   // preserve submitted answer for Back navigation
+    var next = findNextTarget(idx);
+    if (next === -1){ finish(); return; }
+    delete placedByIdx[next]; // fresh state for destination
+    placed = null;
+    idx = next;
+    loadTarget();
+  }
+
+  /* ----------------------------------------------------------------
+     SUBMIT
   ---------------------------------------------------------------- */
   function recordSubmission(record){
     submissions.push(record);
-    window.hegemonSubmissions = submissions;   // dev handle
+    window.hegemonSubmissions = submissions;
     console.log("[hegemon] submission", record);
     showReadout(record);
 
     var isCorrect = (record.plottedX === record.targetX && record.plottedY === record.targetY);
 
-    // Retry submission while Hegemon is open
-    if (HegemonBot.isOpen()) {
+    // While Hegemon is open (or in verification mode), route through bot callbacks.
+    if (HegemonBot.isOpen() || verificationMode) {
       if (isCorrect) {
         HegemonBot.notifyCorrect();
       } else {
@@ -432,10 +496,12 @@
     if (!isCorrect) {
       var code = HegemonDetect.detectMisconception(record);
       var group = code ? errorGroupFor(code) : null;
-      if (group && !mcTriggered[group]) {
+      if (group && !mcTriggered[group] && !mcCountedAtIdx[idx]) {
+        mcCountedAtIdx[idx] = group; // store group so Back can undo this contribution
         mcErrorCount[group] = (mcErrorCount[group] || 0) + 1;
         if (mcErrorCount[group] >= 2) {
           mcTriggered[group] = true;
+          currentTriggeredGroup = group;
           var ctx = HegemonMarkers.snapshot();
           HegemonBot.open({
             misconceptionCode: code,
@@ -459,6 +525,18 @@
   }
 
   btnSubmit.addEventListener("click", function(){
+    // Retry mode: clicking loads a fresh same-slot target (not a submission).
+    if (verificationMode && btnSubmit.textContent === 'Retry') {
+      TARGETS[idx] = TargetGenerator.generateTargetForSlot(idx, TARGETS[idx]);
+      if (currentTriggeredGroup) {
+        delete mcTriggered[currentTriggeredGroup];
+        mcErrorCount[currentTriggeredGroup] = 0;
+      }
+      placed = null;
+      loadTarget(true); // keepHegemon — panel stays open
+      return;
+    }
+
     if (locked || !placed) return;
     var tgt = TARGETS[idx];
     recordSubmission({
@@ -471,18 +549,60 @@
     btnSubmit.disabled = true;
     elStatus.textContent = "Recorded.";
 
-    // Auto-advance unless Hegemon opened — if so, it drives advancement via hegemon:advance.
-    if (!HegemonBot.isOpen()) {
-      if (idx === TARGETS.length - 1) { finish(); } else { idx++; loadTarget(); }
+    // Auto-advance unless Hegemon opened on this submission.
+    if (!HegemonBot.isOpen() && !verificationMode) {
+      advance();
     }
   });
 
-  /* ---- Hegemon-driven advancement (fires after notifyCorrect resolves) ---- */
-  document.addEventListener('hegemon:advance', function(){
-    if (idx === TARGETS.length - 1) { finish(); } else { idx++; loadTarget(); }
+  /* ---- Back button ---- */
+  btnBack.addEventListener("click", function(){
+    if (idx === 0) return;
+    placedByIdx[idx] = placed;
+
+    // Undo this question's contribution to the error count so a future
+    // re-attempt at the same question can count again independently.
+    var countedGroup = mcCountedAtIdx[idx];
+    if (countedGroup) {
+      delete mcCountedAtIdx[idx];
+      mcErrorCount[countedGroup] = Math.max(0, (mcErrorCount[countedGroup] || 0) - 1);
+      if (mcTriggered[countedGroup] && mcErrorCount[countedGroup] < 2) {
+        delete mcTriggered[countedGroup];
+        currentTriggeredGroup = null;
+      }
+    }
+
+    idx--;
+    placed = placedByIdx[idx] || null;
+    loadTarget();
   });
 
-  /* ---- Grid sub-answer mode: activated by [GRID_PROMPT] in bot response ---- */
+  /* ---- Next button (skip) ---- */
+  btnNext.addEventListener("click", function(){
+    if (idx >= TARGETS.length - 1) return;
+    placedByIdx[idx] = placed;          // save in case student comes back
+    var nextIdx = idx + 1;
+    delete placedByIdx[nextIdx];        // fresh for destination
+    placed = null;
+    idx = nextIdx;
+    loadTarget();
+  });
+
+  /* ---- Hegemon-driven advancement ---- */
+  document.addEventListener('hegemon:advance', function(){
+    advance();
+  });
+
+  /* ---- Verification: Submit becomes Retry (blue) after successful scaffolding ---- */
+  document.addEventListener('hegemon:verify-ready', function(){
+    verificationMode = true;
+    btnSubmit.textContent = 'Retry';
+    btnSubmit.style.background = '#2f6df0';
+    btnSubmit.disabled = false; // student clicks Retry to load new target
+    elStatus.textContent = 'Click Retry to try a new question of the same type.';
+  });
+
+  /* ---- Grid sub-answer mode (Hegemon [GRID_PROMPT]) ---- */
   document.addEventListener('hegemon:grid-prompt', function(){
     subAnswerMode = true;
     marker.style.opacity = 0;
@@ -497,23 +617,7 @@
     elStatus.textContent = 'Recorded.';
   });
 
-  function loadTarget(){
-    var t = TARGETS[idx];
-    HegemonBot.reset();
-    placed = null;
-    locked = false;
-    cursor = {x:0, y:0};
-    svg.classList.remove("locked");
-    marker.style.opacity = 0;
-    cursorRing.style.opacity = 0;
-    readout.style.display = "none";
-    btnSubmit.disabled = true;
-    elProg.textContent = (idx+1)+" of "+TARGETS.length;
-    elTarget.innerHTML =
-      "<span class='pair'>(<span class='x'>"+fmt(t.x)+"</span>, <span class='y'>"+fmt(t.y)+"</span>)</span>";
-    elStatus.textContent = "No point placed yet.";
-  }
-
+  /* ---- Finish / restart ---- */
   function finish(){
     elTask.style.display = "none";
     doneCount.textContent = submissions.length + " of " + TARGETS.length + " points recorded.";
@@ -524,9 +628,17 @@
   btnRestart.addEventListener("click", function(){
     idx = 0;
     submissions = [];
+    submittedIdxs = {};
+    placedByIdx = {};
+    mcErrorCount = {};
+    mcTriggered = {};
+    mcCountedAtIdx = {};
+    currentTriggeredGroup = null;
+    verificationMode = false;
     window.hegemonSubmissions = submissions;
     elDone.style.display = "none";
     elTask.style.display = "block";
+    placed = null;
     loadTarget();
     svg.focus();
   });

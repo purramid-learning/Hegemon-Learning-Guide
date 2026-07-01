@@ -44,6 +44,7 @@
   var pendingGridCoords = null;
   var gridSubmitBtn = null;
   var introShown = false;
+  var verificationMode = false;
 
   /* ---- CSS ---- */
   var STYLES = [
@@ -80,7 +81,8 @@
     '.hg-msg--action{color:var(--ink-soft,#54647a);font-style:italic;',
     'align-self:flex-end;font-size:.9rem;padding:6px 14px}',
     '.hg-msg--loading{color:var(--ink-soft,#54647a);align-self:flex-start;',
-    'display:flex;gap:3px;padding:14px}',
+    'display:flex;align-items:center;gap:3px;padding:14px}',
+    '.hg-loading-label{margin-right:3px}',
     '.hg-dot{width:6px;height:6px;border-radius:50%;background:var(--ink-soft,#9fb2c9);',
     'animation:hg-blink 1.4s infinite both}',
     '.hg-dot:nth-child(2){animation-delay:.2s}',
@@ -91,12 +93,6 @@
     '.hg-panel__footer{border-top:1px solid var(--line,#e6edf4);padding:14px 16px;',
     'flex-shrink:0;display:flex;flex-direction:column;gap:10px}',
     '.hg-actions{display:flex;gap:8px;flex-wrap:wrap}',
-    '.hg-btn-retry{font-family:var(--font-display,"Space Grotesk",sans-serif);font-weight:700;',
-    'font-size:.9rem;padding:9px 18px;border:none;border-radius:9px;',
-    'background:var(--y,#0e9488);color:#fff;cursor:pointer;',
-    'transition:background .15s,transform .12s}',
-    '.hg-btn-retry:hover{background:#0b7d73;transform:translateY(-1px)}',
-    '.hg-btn-retry:disabled{opacity:.4;cursor:default;transform:none}',
     '.hg-input-row{display:flex;gap:8px;align-items:flex-end}',
     '.hg-input{flex:1;font-family:var(--font-body,"Inter",sans-serif);font-size:.95rem;',
     'padding:9px 13px;border:1px solid var(--line,#e6edf4);border-radius:10px;resize:none;',
@@ -250,6 +246,7 @@
     hasConversation = false;
     gridPromptActive = false;
     pendingGridCoords = null;
+    verificationMode = false;
     hideGridSubmitButton();
     document.dispatchEvent(new CustomEvent('hegemon:grid-done'));
   }
@@ -270,19 +267,6 @@
     if (enabled) inputEl.focus();
   }
 
-  function showRetryButton() {
-    if (retryUsed || escalated || actionsEl.querySelector('.hg-btn-retry')) return;
-    var btn = document.createElement('button');
-    btn.className = 'hg-btn-retry';
-    btn.textContent = 'Try again';
-    btn.addEventListener('click', function () {
-      retryUsed = true;
-      btn.disabled = true;
-      document.dispatchEvent(new CustomEvent('hegemon:retry'));
-    });
-    actionsEl.appendChild(btn);
-  }
-
   function hideRetryButton() {
     var btn = actionsEl.querySelector('.hg-btn-retry');
     if (btn) btn.remove();
@@ -298,9 +282,15 @@
     transcriptEl.scrollTop = transcriptEl.scrollHeight;
   }
 
-  function appendLoadingMessage() {
+  function appendLoadingMessage(label) {
     var el = document.createElement('div');
     el.className = 'hg-msg hg-msg--loading';
+    if (label) {
+      var textSpan = document.createElement('span');
+      textSpan.className = 'hg-loading-label';
+      textSpan.textContent = label;
+      el.appendChild(textSpan);
+    }
     for (var i = 0; i < 3; i++) {
       var dot = document.createElement('span');
       dot.className = 'hg-dot';
@@ -312,14 +302,14 @@
   }
 
   /* ---- Cloud Function call ---- */
-  function fetchResponse(userText) {
+  function fetchResponse(userText, loadingLabel) {
     if (userText) {
       conversationHistory.push({ role: 'user', content: userText });
       appendMessage(userText, 'user');
     }
 
     setInputEnabled(false);
-    var loadingEl = appendLoadingMessage();
+    var loadingEl = appendLoadingMessage(loadingLabel || null);
 
     var body = {
       misconceptionCode: currentCode,
@@ -354,6 +344,11 @@
           escalated = true;
           hideRetryButton();
           setInputEnabled(false);
+        } else if (data.nextQuestion) {
+          verificationMode = true;
+          setInputEnabled(false);
+          hideRetryButton();
+          document.dispatchEvent(new CustomEvent('hegemon:verify-ready'));
         } else if (data.gridPrompt) {
           gridPromptActive = true;
           pendingGridCoords = null;
@@ -362,7 +357,6 @@
           showGridSubmitButton();
         } else {
           setInputEnabled(true);
-          showRetryButton();
         }
       })
       .catch(function () {
@@ -435,7 +429,7 @@
     hasConversation = true;
     introShown = true; // auto-trigger counts as Athena having been "present"
     showPanel();
-    fetchResponse(null);
+    fetchResponse(null, "Let's look at your work");
   }
 
   function openManual() {
@@ -461,8 +455,13 @@
   }
 
   function notifyCorrect() {
-    if (!open) return;
-    appendMessage('Nice work. Give the next one a try.', 'success');
+    if (!open && !verificationMode) return;
+    if (!open && hasConversation) showPanel();
+    var verifyMessages = ['Good job!', 'Well done!', "That's it!"];
+    var msg = verificationMode
+      ? verifyMessages[Math.floor(Math.random() * verifyMessages.length)]
+      : 'Nice work. Give the next one a try.';
+    appendMessage(msg, 'success');
     hideRetryButton();
     hideGridSubmitButton();
     setInputEnabled(false);
@@ -473,7 +472,14 @@
   }
 
   function notifyWrong(code) {
-    if (!open) return;
+    if (!open && !verificationMode) return;
+    if (verificationMode) {
+      if (!open && hasConversation) showPanel();
+      appendMessage('This one is still tricky. Ask your teacher for help with this concept.', 'escalate');
+      escalated = true;
+      setInputEnabled(false);
+      return;
+    }
     var noteText = '[Student plotted the point again' +
       (currentCoords ? ' — target was (' + currentCoords.targetX + ', ' + currentCoords.targetY + ').' : '.') +
       ']';

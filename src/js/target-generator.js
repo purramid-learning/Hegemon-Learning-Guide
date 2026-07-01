@@ -41,6 +41,23 @@
     return Math.random() < 0.5 ? randInt(1, 5) : randInt(-5, -1);
   }
 
+  function generateTargetForSlot(slot, exclude) {
+    var x, y, attempts = 0;
+    do {
+      switch (slot) {
+        case 0: x = randInt(1,5); y = randIntExcluding(1,5,[x]); break;
+        case 1: x = randInt(-5,-1); y = randInt(1,5); break;
+        case 2: x = randInt(1,5); y = randInt(-5,-1); break;
+        case 3: x = 0; y = randNonZero(); break;
+        case 4: x = randNonZero(); y = 0; break;
+        case 5: x = randInt(-5,-1); y = randInt(-5,-1); break;
+        default: x = randInt(1,5); y = randInt(1,5);
+      }
+      attempts++;
+    } while (exclude && x === exclude.x && y === exclude.y && attempts < 20);
+    return { x: x, y: y };
+  }
+
   function generateTargets() {
     // Slot 0 — Q1: both positive, x ≠ y (so a swapped point is detectable)
     var x0 = randInt(1, 5);
@@ -76,5 +93,5 @@
     ];
   }
 
-  return { generateTargets: generateTargets };
+  return { generateTargets: generateTargets, generateTargetForSlot: generateTargetForSlot };
 }));
