@@ -399,6 +399,7 @@
     var apiText = displayText;
     pendingGridCoords = null;
     gridPromptActive = false;
+    retryUsed = true;
     hideGridSubmitButton();
     document.dispatchEvent(new CustomEvent('hegemon:grid-done'));
     // Add to history as plain text for Claude; display as italic action without "I".
@@ -481,6 +482,13 @@
 
   function notifyWrong(code) {
     if (!open) return;
+    if (retryUsed) {
+      // Student already failed a grid demonstration — escalate without another Claude call.
+      appendMessage('You\'ve worked really hard on this one. This is a good time to ask your teacher for help.', 'escalate');
+      escalated = true;
+      setInputEnabled(false);
+      return;
+    }
     var noteText = '[Student plotted the point again' +
       (currentCoords ? ' — target was (' + currentCoords.targetX + ', ' + currentCoords.targetY + ').' : '.') +
       ']';
