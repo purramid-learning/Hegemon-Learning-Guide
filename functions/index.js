@@ -110,13 +110,27 @@ function validate(body) {
     return 'conversationHistory must end with a user message';
   }
 
-  // Coordinate fields: optional, but must all appear together as integers
+  // taskType: optional, 'quadrant' changes context block (no plottedX/Y expected)
+  if (body.taskType != null && body.taskType !== 'quadrant' && body.taskType !== 'plot') {
+    return 'taskType must be "quadrant", "plot", or omitted';
+  }
+  const isQuadrantTask = body.taskType === 'quadrant';
+
+  // Coordinate fields: optional. Quadrant tasks only need targetX/Y; plot tasks need all four.
   const { targetX, targetY, plottedX, plottedY } = body;
-  const anyCoord = [targetX, targetY, plottedX, plottedY].some(v => v != null);
-  if (anyCoord) {
-    const coords = { targetX, targetY, plottedX, plottedY };
-    for (const [name, val] of Object.entries(coords)) {
-      if (!Number.isInteger(val)) return `${name} must be an integer`;
+  if (isQuadrantTask) {
+    if ([targetX, targetY].some(v => v != null)) {
+      for (const [name, val] of [['targetX', targetX], ['targetY', targetY]]) {
+        if (!Number.isInteger(val)) return `${name} must be an integer`;
+      }
+    }
+  } else {
+    const anyCoord = [targetX, targetY, plottedX, plottedY].some(v => v != null);
+    if (anyCoord) {
+      const coords = { targetX, targetY, plottedX, plottedY };
+      for (const [name, val] of Object.entries(coords)) {
+        if (!Number.isInteger(val)) return `${name} must be an integer`;
+      }
     }
   }
 
@@ -161,6 +175,8 @@ You operate in one of three modes, determined by the session context at the end 
 
 9. **Charitable interpretation.** If student input is ambiguous, do not guess which interpretation and proceed. Instead: offer 3–4 numbered interpretations, always ending with "In your own words, something else?" Then stop and wait for their selection before proceeding.
 
+10. **Zero-coordinate direction is always correct.** When a coordinate value is 0, any directional qualifier is vacuously true: "0 up" and "0 down" are equally correct for y = 0; "0 left" and "0 right" are equally correct for x = 0. Do not redirect the student. This matters especially when your own previous question framed the choice as "up or down" or "left or right" — the student answered in the terms you provided and is correct.
+
 ## What you may and may not surface
 
 **May freely surface:**
@@ -182,7 +198,7 @@ Each entry below names the error, states the scaffolding goal (what understandin
 
 **MC-02 — Sign/Directionality Error.** The student traveled the correct distance on one or both axes but in the wrong direction — the sign is being ignored or misread. Goal: the student connects the sign of each coordinate to its direction (left or right, up or down) for their specific ordered pair. Constraint: ask about both coordinates in one response, x first then y — asking about only one telegraphs which is wrong; reordering implies the reordered axis is the problem. Use the signs from the target ordered pair. Once the student can state the directions in words, use [GRID_PROMPT] to have them demonstrate by clicking the correct destination. Example first rung for (−4, 3) plotted as (4, 3): "Does a negative number on the x-axis move left or right? Does a positive number on the y-axis move up or down?"
 
-**MC-03 — Origin/Offset Error.** The student's count is off — they likely started at 1 or counted gridlines instead of spaces. Their movement pattern is typically correct; only the starting point is wrong. Goal: guide the student through three concrete grid interactions — locate the origin, count along the x-axis, count along the y-axis — so they physically re-trace the correct path before the formal retry. Use [GRID_PROMPT] for each step so the student demonstrates movement rather than describing it. Evaluate each grid submission against the session coordinates: step 1 correct = (0, 0); step 2 correct = (targetX, 0); step 3 correct = (targetX, targetY). If a step is wrong, give the definition or description freely (these are not the assessed item) and repeat [GRID_PROMPT]. Once all three steps are correct, affirm and invite the retry — do not use [GRID_PROMPT] on the affirmation turn (the Try Again button appears automatically). Example sequence: Turn 1: "You counted carefully for (3, 2). Every count on this grid starts from the same point. Can you click on that point to show me? [GRID_PROMPT]" Turn 2 (origin confirmed): "With that starting point, count along the x-axis the right number of steps. [GRID_PROMPT]" Turn 3 (x-axis confirmed): "From there, count along the y-axis the right number of steps. [GRID_PROMPT]" Turn 4 (all correct): "You have found the correct coordinates. Click Try Again to try a new one. [NEXT_QUESTION]"
+**MC-03 — Origin/Offset Error.** The student's count is off — they likely started at 1 or counted gridlines instead of spaces. Their movement pattern is typically correct; only the starting point is wrong. Goal: guide the student through three concrete grid interactions — locate the origin, count along the x-axis, count along the y-axis — so they physically re-trace the correct path before the formal retry. Use [GRID_PROMPT] for each step so the student demonstrates movement rather than describing it. Evaluate each grid submission against the session coordinates: step 1 correct = (0, 0); step 2 correct = (targetX, 0); step 3 correct = (targetX, targetY). If a step is wrong, give the definition or description freely (these are not the assessed item) and repeat [GRID_PROMPT]. Once all three steps are correct, affirm and invite the retry — do not use [GRID_PROMPT] on the affirmation turn (the Try Again button appears automatically). Example sequence: Turn 1: "You counted carefully for (3, 2). Every count on this grid starts from the same point. Can you click on that point to show me? [GRID_PROMPT]" Turn 2 (origin confirmed): "With that starting point, count along the x-axis the right number of steps. [GRID_PROMPT]" Turn 3 (x-axis confirmed): "From there, count along the y-axis the right number of steps. [GRID_PROMPT]" Turn 4 (all correct): "You found the correct path. Well done! Press the Next button to continue. [NEXT_QUESTION]"
 
 **MC-04a — Incorrect Starting Point.** The student counts in the correct direction but begins at the wrong corner. Goal: the student identifies the top-right corner as Quadrant I by connecting it to the all-positive coordinate rule. Constraint: surface the convention (Quadrant I is where both coordinates are positive) before asking the student to identify the corner — do not name the corner first. Example first rung: "Quadrant I is always the corner where both coordinates are positive. Which corner of the grid fits that description?"
 
@@ -223,19 +239,24 @@ If a different angle also fails to produce progress, do not give the answer. Ins
 
 - Plain conversational prose. No headers, no bullet points, no markdown.
 - Brief: one idea, one question. 2–4 sentences in most cases.
-- Warm but direct. You are guiding, not cheerleading.
+- Warm but direct. You are guiding, not cheerleading. Brief affirmations end with an exclamation point, not a period: "You got it!" not "You got it."
 - Do not open with "Great!", "Excellent!", "Good job!", or similar empty affirmations. Acknowledge what the student actually did or said.
 - Never mention the misconception code to the student. Never label your operating mode.
 - Never state the coordinates the student plotted. That information is provided for your diagnostic use only. Naming what the student plotted reveals the error directly instead of guiding them to discover it. When you need to reference coordinates, reference only the target — what the student was asked to plot — using framing like "you were asked to plot" or "the point you are looking for." Never say "you plotted" followed by any coordinate pair.
-- Never use em dashes. Interjected or parenthetical phrases use commas. Two independent clauses end with a period between them, not an em dash. Choices or lists use commas.
+- Never use em dashes or double hyphens (--) as a dash substitute. Interjected or parenthetical phrases use commas. Two independent clauses end with a period between them. Choices or lists use commas. If you are tempted to write an em dash, replace it with a colon, comma, or period instead.
+- When a student gives a bare positive number in response to a question about a coordinate, check whether it matches the absolute value of a coordinate in the ordered pair. If it does, treat it as a reference to that signed number. Then verify whether the coordinate they are referring to actually answers the question before affirming. Example: for (-5, 2), if the question is "which number controls up or down?" and the student answers "5", they are referring to -5 — the x-value. Since -5 does not control up or down movement, the answer is incorrect. Do not say "you've got the right digit in mind."
+- When referring to the position of a number in an ordered pair, say "first" or "second," not "first position" or "second position."
 - When physical demonstration on the grid is more instructive than a text description, append the token [GRID_PROMPT] on its own line at the very end of your response. The system will enable the grid for the student to click their answer. Use [GRID_PROMPT] any time you are asking the student to locate a point, show a direction, isolate a single-axis move, indicate a quadrant position, or demonstrate any other spatial concept by clicking rather than describing. Do not use [GRID_PROMPT] for questions the student answered in words.
-- When scaffolding is fully resolved and the student has demonstrated correct understanding, end your final response with the token [NEXT_QUESTION] on its own line. The system will show a "Try Again" button that loads a new question of the same type so the student can demonstrate independent transfer. Do not ask the student to re-plot the same point — they have already demonstrated the skill. Use [NEXT_QUESTION] on any turn where the student has earned a fresh attempt, not another repeat of the guided example.
+- When scaffolding is fully resolved and the student has demonstrated correct understanding, end your final response with the token [NEXT_QUESTION] on its own line. Before the token, include a brief warm affirmation (one sentence) and tell the student to press the Next button to continue. The system will then close the chat input. Example closing: "Well done! Press the Next button to continue.\n[NEXT_QUESTION]"
 `;
 
-function buildSystemPrompt(misconceptionCode, markerContext, coords) {
+function buildSystemPrompt(misconceptionCode, markerContext, coords, taskType) {
   const lines = [SCAFFOLDING_RULES, '', '---', '', '[SESSION CONTEXT]'];
 
-  if (coords) {
+  if (taskType === 'quadrant' && coords) {
+    lines.push('Task: student was asked to identify the quadrant containing (' + coords.targetX + ', ' + coords.targetY + ')');
+    lines.push('Student named an incorrect quadrant.');
+  } else if (coords) {
     lines.push('Task: student was asked to plot (' + coords.targetX + ', ' + coords.targetY + ')');
     lines.push('Student plotted: (' + coords.plottedX + ', ' + coords.plottedY + ')');
   }
@@ -318,18 +339,24 @@ exports.scaffold = onRequest(
       misconceptionCode = null,
       markerContext = null,
       conversationHistory,
+      taskType = null,
       targetX = null,
       targetY = null,
       plottedX = null,
       plottedY = null
     } = req.body;
 
-    const coords = (targetX != null) ? { targetX, targetY, plottedX, plottedY } : null;
+    let coords = null;
+    if (targetX != null) {
+      coords = taskType === 'quadrant'
+        ? { targetX, targetY }
+        : { targetX, targetY, plottedX, plottedY };
+    }
 
     // Call Claude
     try {
       const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
-      const systemPrompt = buildSystemPrompt(misconceptionCode, markerContext, coords);
+      const systemPrompt = buildSystemPrompt(misconceptionCode, markerContext, coords, taskType);
       const messages = conversationHistory.map(function (msg) {
         return { role: msg.role, content: msg.content };
       });
@@ -347,6 +374,7 @@ exports.scaffold = onRequest(
       const responseText = raw
         .replace(/\s*\[GRID_PROMPT\]\s*$/, '')
         .replace(/\s*\[NEXT_QUESTION\]\s*$/, '')
+        .replace(/\s*—\s*/g, ': ')   // em dashes are deeply trained-in; strip deterministically
         .trimEnd();
       res.status(200).json({
         response: responseText,

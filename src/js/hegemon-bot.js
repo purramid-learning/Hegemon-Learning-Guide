@@ -44,7 +44,7 @@
   var pendingGridCoords = null;
   var gridSubmitBtn = null;
   var introShown = false;
-  var verificationMode = false;
+  var currentTaskType = null;
 
   /* ---- CSS ---- */
   var STYLES = [
@@ -82,6 +82,9 @@
     'align-self:flex-end;font-size:.9rem;padding:6px 14px}',
     '.hg-msg--loading{color:var(--ink-soft,#54647a);align-self:flex-start;',
     'display:flex;align-items:center;gap:3px;padding:14px}',
+    '.hg-sep{text-align:center;font-size:.75rem;color:var(--ink-soft,#54647a);',
+    'margin:4px 0;display:flex;align-items:center;gap:8px;font-weight:600;align-self:stretch}',
+    '.hg-sep::before,.hg-sep::after{content:"";flex:1;border-top:1px solid var(--line,#e6edf4)}',
     '.hg-loading-label{margin-right:3px}',
     '.hg-dot{width:6px;height:6px;border-radius:50%;background:var(--ink-soft,#9fb2c9);',
     'animation:hg-blink 1.4s infinite both}',
@@ -231,12 +234,14 @@
   function hidePanel() {
     open = false;
     panelEl.classList.remove('hg-panel--open');
+    document.dispatchEvent(new CustomEvent('hegemon:closed'));
   }
 
   function resetConversation() {
     open = false;
     panelEl.classList.remove('hg-panel--open');
-    transcriptEl.innerHTML = '';
+    // Transcript is preserved intentionally — student can reopen the panel to review
+    // what happened. openWithParams() clears it when a new misconception session starts.
     actionsEl.innerHTML = '';
     conversationHistory = [];
     currentCode = null;
@@ -246,7 +251,7 @@
     hasConversation = false;
     gridPromptActive = false;
     pendingGridCoords = null;
-    verificationMode = false;
+    currentTaskType = null;
     hideGridSubmitButton();
     document.dispatchEvent(new CustomEvent('hegemon:grid-done'));
   }
@@ -322,6 +327,7 @@
       body.plottedX = currentCoords.plottedX;
       body.plottedY = currentCoords.plottedY;
     }
+    if (currentTaskType) body.taskType = currentTaskType;
 
     fetch(functionUrl, {
       method: 'POST',
@@ -345,10 +351,8 @@
           hideRetryButton();
           setInputEnabled(false);
         } else if (data.nextQuestion) {
-          verificationMode = true;
           setInputEnabled(false);
-          hideRetryButton();
-          document.dispatchEvent(new CustomEvent('hegemon:verify-ready'));
+          document.dispatchEvent(new CustomEvent('hegemon:next-question'));
         } else if (data.gridPrompt) {
           gridPromptActive = true;
           pendingGridCoords = null;
@@ -419,10 +423,16 @@
     currentCode = params.misconceptionCode || null;
     currentCoords = params.coords || null;
     currentMarkerContext = params.markerContext || null;
+    currentTaskType = params.taskType || null;
     escalated = false;
     retryUsed = false;
-    transcriptEl.innerHTML = '';
     actionsEl.innerHTML = '';
+    if (params.questionLabel && transcriptEl.children.length > 0) {
+      var sep = document.createElement('div');
+      sep.className = 'hg-sep';
+      sep.textContent = params.questionLabel;
+      transcriptEl.appendChild(sep);
+    }
     // Seed an opening user message so the Cloud Function receives a non-empty history.
     // Not displayed — Claude's first response is the student's first visible message.
     conversationHistory = [{ role: 'user', content: 'I need help with this one. I got it wrong but I\'m not sure why.' }];
@@ -445,6 +455,10 @@
       showPanel();
       appendMessage('Hi, I\'m Athena!', 'bot');
       setInputEnabled(true);
+    } else if (!hasConversation) {
+      // Session ended (auto-advanced or reset) but transcript is preserved.
+      // Just show the panel so the student can review what happened.
+      showPanel();
     } else {
       openWithParams({
         misconceptionCode: currentCode,
@@ -455,14 +469,8 @@
   }
 
   function notifyCorrect() {
-    if (!open && !verificationMode) return;
-    if (!open && hasConversation) showPanel();
-    var verifyMessages = ['Good job!', 'Well done!', "That's it!"];
-    var msg = verificationMode
-      ? verifyMessages[Math.floor(Math.random() * verifyMessages.length)]
-      : 'Nice work. Give the next one a try.';
-    appendMessage(msg, 'success');
-    hideRetryButton();
+    if (!open) return;
+    appendMessage('Nice work! Give the next one a try.', 'success');
     hideGridSubmitButton();
     setInputEnabled(false);
     setTimeout(function() {
@@ -472,14 +480,7 @@
   }
 
   function notifyWrong(code) {
-    if (!open && !verificationMode) return;
-    if (verificationMode) {
-      if (!open && hasConversation) showPanel();
-      appendMessage('This one is still tricky. Ask your teacher for help with this concept.', 'escalate');
-      escalated = true;
-      setInputEnabled(false);
-      return;
-    }
+    if (!open) return;
     var noteText = '[Student plotted the point again' +
       (currentCoords ? ' — target was (' + currentCoords.targetX + ', ' + currentCoords.targetY + ').' : '.') +
       ']';
@@ -488,11 +489,54 @@
     fetchResponse(null);
   }
 
+  function clearHistory() {
+    resetConversation();
+    transcriptEl.innerHTML = '';
+    introShown = false;
+  }
+
+  function hasHistory() {
+    return transcriptEl.children.length > 0;
+  }
+
+  function downloadChat() {
+    if (!transcriptEl.children.length) return;
+    var win = window.open('', '_blank');
+    if (!win) return;
+    var html = '<!DOCTYPE html><html><head>' +
+      '<meta charset="utf-8">' +
+      '<title>Hegemon Chat History</title>' +
+      '<style>' +
+      'body{font-family:"Space Grotesk",system-ui,sans-serif;max-width:600px;margin:40px auto;color:#16263d;padding:0 20px}' +
+      'h1{font-size:1rem;color:#54647a;margin-bottom:24px;font-weight:600}' +
+      '.wrap{display:flex;flex-direction:column;gap:12px}' +
+      '.hg-msg{max-width:85%;padding:10px 14px;border-radius:12px;font-size:.9rem;line-height:1.6;white-space:pre-wrap;word-break:break-word}' +
+      '.hg-msg--bot,.hg-msg--success{background:#f6f9fc;border:1px solid #e6edf4}' +
+      '.hg-msg--user{background:#16263d;color:#fff;margin-left:auto;text-align:right}' +
+      '.hg-msg--escalate{background:#fff8e6;border:1px solid #f5d87a}' +
+      '.hg-msg--loading,.hg-msg--action{display:none}' +
+      '.hg-sep{text-align:center;font-size:.75rem;color:#54647a;margin:12px 0 4px;display:flex;align-items:center;gap:8px;font-weight:600}' +
+      '.hg-sep::before,.hg-sep::after{content:"";flex:1;border-top:1px solid #e6edf4}' +
+      '@media print{body{margin:20px;padding:0 10px}}' +
+      '</style>' +
+      '</head><body>' +
+      '<h1>Hegemon Chat — Lesson 1 Quiz</h1>' +
+      '<div class="wrap">' + transcriptEl.innerHTML + '</div>' +
+      '</body></html>';
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(function() { win.print(); }, 400);
+  }
+
   return {
     init: init,
     open: openWithParams,
     close: hidePanel,
     reset: resetConversation,
+    clearHistory: clearHistory,
+    hasHistory: hasHistory,
+    downloadChat: downloadChat,
     isOpen: function () { return open; },
     notifyCorrect: notifyCorrect,
     notifyWrong: notifyWrong

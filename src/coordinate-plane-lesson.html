@@ -232,6 +232,13 @@
   .feedback{margin:13px 0 0;font-size:.92rem;font-weight:600;min-height:1.2em}
   .feedback.ok{color:var(--y)}
   .feedback.no{color:var(--x)}
+  .practice-btn{
+    display:inline-block;margin-top:12px;padding:9px 24px;
+    background:var(--focus);color:#fff;border:none;border-radius:9px;
+    font-family:var(--font-display);font-size:.95rem;font-weight:700;
+    cursor:pointer;transition:background .15s;
+  }
+  .practice-btn:hover{background:#1d5ce0}
 
   /* ---------- interactive: number the quadrants ---------- */
   .qa{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin:1.4em 0}
@@ -423,7 +430,7 @@
     <h2>Quick checks</h2>
     <p>Try each one before you reveal the answer. These are just for you — no score is recorded.</p>
 
-    <div class="check" data-answer="2">
+    <div class="check" data-answer="2" data-practice-type="quadrant">
       <p class="qno">Question 1</p>
       <p class="qtext">Which quadrant contains the point <span class="pair">(<span class="x">−2</span>, <span class="y">5</span>)</span>?</p>
       <div class="opts">
@@ -435,7 +442,7 @@
       <p class="feedback" role="status"></p>
     </div>
 
-    <div class="check" data-answer="3">
+    <div class="check" data-answer="3" data-practice-type="chat">
       <p class="qno">Question 2</p>
       <p class="qtext">What is the ordered pair for point <strong>A</strong>?
         <span class="plane-svg" data-plane='{"type":"plane","range":5,"labels":true,"points":[{"x":-3,"y":-2,"label":"A"}]}'></span>
@@ -449,7 +456,7 @@
       <p class="feedback" role="status"></p>
     </div>
 
-    <div class="check" data-answer="1">
+    <div class="check" data-answer="1" data-practice-type="plot">
       <p class="qno">Question 3</p>
       <p class="qtext">Where does the point <span class="pair">(<span class="x">4</span>, <span class="y">0</span>)</span> sit?</p>
       <div class="opts">
@@ -478,9 +485,9 @@
 
   <!-- handoff -->
   <section class="handoff">
-    <h2>Now plot some points</h2>
-    <p>Head to the practice grid and try plotting points yourself. Work at your own pace — you can ask for a hint whenever you're stuck.</p>
-    <a class="btn" href="#" data-practice-link>Go to plotting practice →</a>
+    <h2>Ready for the quiz?</h2>
+    <p>Head to the Lesson 1 Quiz to plot points and identify quadrants. Work at your own pace — you can ask for a hint whenever you're stuck.</p>
+    <a class="btn" href="#" data-practice-link>Go to Lesson 1 Quiz →</a>
   </section>
 
 </main>
@@ -628,8 +635,16 @@
           fb.className = "feedback ok";
         } else {
           opt.classList.add("wrong");
-          fb.textContent = "Not quite — the highlighted answer is the one to study.";
+          fb.textContent = "Not quite. The highlighted answer is the one to study.";
           fb.className = "feedback no";
+          var ptype = card.getAttribute("data-practice-type");
+          if (ptype) {
+            var pb = document.createElement("button");
+            pb.className = "practice-btn";
+            pb.textContent = "Practice";
+            (function(type){ pb.addEventListener("click", function(){ PracticeModal.open(type); }); }(ptype));
+            card.appendChild(pb);
+          }
         }
       });
     });
@@ -712,7 +727,7 @@
     var ok = order.every(function(k,i){ return k===CORRECT[i]; });
     statusEl.textContent = "";
     if (ok){
-      fb.textContent = "Correct — you started in the top-right and counted counterclockwise.";
+      fb.textContent = "Correct! You started in the top-right and counted counterclockwise.";
       fb.className = "feedback ok";
       Object.keys(numEls).forEach(function(k){ numEls[k].setAttribute("class","qa-num correct show"); });
     } else {
@@ -735,6 +750,20 @@
 
   resetBtn.addEventListener("click", reset);
   build();
+})();
+</script>
+
+<script src="js/misconception-detection.js"></script>
+<script src="js/marker-reader.js"></script>
+<script src="js/hegemon-bot.js"></script>
+<script src="js/practice-modal.js"></script>
+<script>
+(function(){
+  "use strict";
+  HegemonBot.init({
+    functionUrl: 'https://us-central1-hegemon-learning-guide.cloudfunctions.net/scaffold'
+  });
+  PracticeModal.init();
 })();
 </script>
 </body>

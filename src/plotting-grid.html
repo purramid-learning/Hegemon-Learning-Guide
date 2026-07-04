@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Plotting Practice · The Coordinate Plane</title>
+<title>Lesson 1 Quiz · The Coordinate Plane</title>
 <!--
   Hegemon Learning Guide · interactive plotting grid
   Student-facing entry point and the source of all detection inputs.
@@ -118,6 +118,14 @@
   .cursor-ring{fill:none;stroke:var(--focus);stroke-width:2;opacity:0;pointer-events:none;transition:opacity .12s}
   .marker{fill:var(--ink);stroke:#fff;stroke-width:2;pointer-events:none;opacity:0;transition:opacity .12s}
 
+  /* Quadrant-identification mode */
+  .quad-mode .hit{cursor:default;pointer-events:none}
+  .quad-mode .hit:hover{fill:transparent}
+  .quad-hit{fill:transparent;cursor:pointer;transition:fill .12s}
+  .quad-hit:hover{fill:rgba(47,109,240,0.08)}
+  .locked .quad-hit{cursor:default;pointer-events:none}
+  .quad-no-labels .quad-label{visibility:hidden}
+
   /* ---------- status + controls ---------- */
   .status{
     min-height:1.3em;margin:14px 0 0;font-size:.95rem;font-weight:600;
@@ -142,6 +150,8 @@
   .btn-primary{background:var(--x);color:#fff}
   .btn-primary:hover:not(:disabled){background:#cf5230;transform:translateY(-1px)}
   .btn-primary:disabled{opacity:.4;cursor:default}
+  .btn-secondary{background:var(--ink,#16263d);color:#fff}
+  .btn-secondary:hover:not(:disabled){background:#22384f;transform:translateY(-1px)}
 
   /* Back / Next navigation buttons — smaller, dark ink */
   .btn-nav{
@@ -175,6 +185,7 @@
   .done{display:none;text-align:center;padding:14px 0 4px}
   .done h2{font-family:var(--font-display);font-size:1.4rem;margin:0 0 6px}
   .done p{color:var(--ink-soft);margin:0 0 18px}
+  .done-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
 
   footer{padding:30px 0 56px;text-align:center}
   footer p{font-family:var(--font-mono);font-size:.74rem;color:var(--ink-soft);margin:0}
@@ -191,21 +202,21 @@
 <header class="masthead">
   <div class="wrap">
     <p class="crumb">Math · The Coordinate Plane</p>
-    <h1 class="title">Plotting <span class="c-x">practice</span></h1>
-    <p class="lede">Read each point, then click the grid where it belongs. Move it as many times as you like — it's only recorded when you submit.</p>
+    <h1 class="title">Lesson 1 <span class="c-x">quiz</span></h1>
+    <p class="lede">Plot each point and identify quadrants. Click to place, then Submit. You can go back and revise before finishing.</p>
   </div>
 </header>
 
 <main class="wrap">
-  <section class="panel" aria-label="Plotting practice">
+  <section class="panel" aria-label="Lesson 1 Quiz">
 
     <!-- live task -->
     <div id="task">
       <div class="taskbar">
         <p class="progress" id="progress">1 of 6</p>
       </div>
-      <p class="prompt">Plot the point <span id="target"></span></p>
-      <p class="hint">Click an intersection on the grid. Or focus the grid and use arrow keys, then Enter.</p>
+      <p class="prompt" id="prompt">Plot the point</p>
+      <p class="hint" id="hint">Click an intersection on the grid. Or focus the grid and use arrow keys, then Enter.</p>
 
       <div class="stage">
         <svg id="grid" class="plane-svg" tabindex="0" role="application"
@@ -232,16 +243,19 @@
 
     <!-- end state -->
     <div class="done" id="done">
-      <h2>All points captured.</h2>
+      <h2>Quiz complete.</h2>
       <p id="done-count"></p>
-      <button class="btn btn-primary" id="restart">Start over</button>
+      <div class="done-actions">
+        <button class="btn btn-primary" id="restart">Start over</button>
+        <button class="btn btn-secondary" id="download-chat" style="display:none">Download Chat</button>
+      </div>
     </div>
 
   </section>
 </main>
 
 <footer>
-  <div class="wrap"><p>Coordinate Plane · plotting practice · input source for misconception detection</p></div>
+  <div class="wrap"><p>Coordinate Plane · Lesson 1 Quiz · plotting and quadrant identification</p></div>
 </footer>
 
 <script src="js/misconception-detection.js"></script>
@@ -252,10 +266,38 @@
 (function(){
   "use strict";
 
-  /* ----------------------------------------------------------------
-     Target sequence — randomized each session by target-generator.js.
-  ---------------------------------------------------------------- */
-  var TARGETS = TargetGenerator.generateTargets();
+  /* ---- Question sequence: 6 plot + 4 quadrant-identify ---- */
+  var QUAD_CORNERS = ['TR','TL','BL','BR'];
+  var QUAD_CORRECT = { TR:'I', TL:'II', BL:'III', BR:'IV' };
+
+  function shuffle(arr){
+    for(var i=arr.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=arr[i];arr[i]=arr[j];arr[j]=t;}
+    return arr;
+  }
+
+  function makeQuestions(){
+    var qs = [];
+    TargetGenerator.generateTargets().forEach(function(t){
+      qs.push({ type:'plot', x:t.x, y:t.y });
+    });
+    var quadQs = [];
+    QUAD_CORNERS.forEach(function(corner){
+      var sx = (corner==='TL'||corner==='BL') ? -1 : 1;
+      var sy = (corner==='BL'||corner==='BR') ? -1 : 1;
+      quadQs.push({ type:'quadrant', corner:corner, correct:QUAD_CORRECT[corner],
+        x: sx*(1+Math.floor(Math.random()*3)),
+        y: sy*(1+Math.floor(Math.random()*3)) });
+    });
+    // Shuffle corners, then fix formats by position:
+    // Q7–8 (indices 0–1): name — "Click Quadrant X" with no labels
+    // Q9–10 (indices 2–3): coord — "In which quadrant does (x,y) appear?"
+    shuffle(quadQs).forEach(function(q, i){
+      q.format = i < 2 ? 'name' : 'coord';
+      qs.push(q);
+    });
+    return qs;
+  }
+  var QUESTIONS = makeQuestions();
 
   /* ---- geometry ---- */
   var NS = "http://www.w3.org/2000/svg";
@@ -284,7 +326,8 @@
 
   /* ---- DOM ---- */
   var svg       = document.getElementById("grid");
-  var elTarget  = document.getElementById("target");
+  var elPrompt  = document.getElementById("prompt");
+  var elHint    = document.getElementById("hint");
   var elProg    = document.getElementById("progress");
   var elStatus  = document.getElementById("status");
   var btnSubmit = document.getElementById("submit");
@@ -295,27 +338,29 @@
   var elTask    = document.getElementById("task");
   var elDone    = document.getElementById("done");
   var doneCount = document.getElementById("done-count");
-  var btnRestart= document.getElementById("restart");
+  var btnRestart      = document.getElementById("restart");
+  var btnDownloadChat = document.getElementById("download-chat");
 
   /* ---- state ---- */
   var idx = 0;
-  var placed = null;          // {x, y} or null — current placed point
-  var locked = false;         // grid locked after submission
-  var submissions = [];       // full capture log
-  var marker, cursorRing;
+  var placed = null;           // {x,y} or null — current placed point (plot questions)
+  var locked = false;
+  var submissions = [];
+  var marker, cursorRing, questionDot;
   var cursor = {x:0, y:0};
   var subAnswerMode = false;
+  var selectedQuadrant = null; // current quadrant selection (quadrant questions)
+  var qSelRects = {};          // { 'I': rectEl, ... } for selection fill visualization
 
-  var submittedIdxs = {};     // {idx: true} — questions with at least one submission
-  var placedByIdx   = {};     // {idx: {x,y}} — saved placed point per question (for Back)
-  var verificationMode = false; // true after [NEXT_QUESTION]: Submit becomes Retry (blue)
+  var submittedIdxs = {};
+  var placedByIdx   = {};
+  var selectedByIdx = {};      // {idx: 'I'|'II'|'III'|'IV'} — quadrant selection for Back
 
-  // Error tracking for adaptive Hegemon trigger
-  var mcErrorCount  = {};
-  var mcTriggered   = {};
-  var mcCountedAtIdx = {}; // {idx: true} — question already counted toward error total; prevents Back+resubmit double-counting
+  var mcErrorCount   = {};
+  var mcTriggered    = {};
+  var mcCountedAtIdx = {};
   var currentTriggeredGroup = null;
-  var ERROR_GROUP = { 'MC-03': 'MC-03/08', 'MC-08': 'MC-03/08' };
+  var ERROR_GROUP = { 'MC-03':'MC-03/08', 'MC-08':'MC-03/08' };
   function errorGroupFor(code){ return ERROR_GROUP[code] || code; }
 
   /* ---- bot init ---- */
@@ -324,6 +369,7 @@
   });
 
   /* ---- build the static grid once ---- */
+  var quadrantLayer;
   function buildGrid(){
     svg.setAttribute("viewBox", "0 0 "+SIZE+" "+SIZE);
 
@@ -355,14 +401,80 @@
       }
     }
 
+    /* Quadrant interaction layer — shown only for quadrant-identify questions */
+    quadrantLayer = svgEl("g", {class:"quad-layer"});
+    quadrantLayer.style.display = "none";
+    var HALF = RANGE * U;
+    var QDEFS = [
+      {key:"I",   rx:X(0),      ry:Y(RANGE), rw:HALF, rh:HALF},
+      {key:"II",  rx:X(-RANGE), ry:Y(RANGE), rw:HALF, rh:HALF},
+      {key:"III", rx:X(-RANGE), ry:Y(0),     rw:HALF, rh:HALF},
+      {key:"IV",  rx:X(0),      ry:Y(0),     rw:HALF, rh:HALF}
+    ];
+    QDEFS.forEach(function(q){
+      var sel = svgEl("rect",{x:q.rx,y:q.ry,width:q.rw,height:q.rh,
+        fill:"rgba(47,109,240,0)","pointer-events":"none"});
+      qSelRects[q.key] = sel;
+      quadrantLayer.appendChild(sel);
+
+      var qhit = svgEl("rect",{x:q.rx,y:q.ry,width:q.rw,height:q.rh,
+        fill:"transparent",cursor:"pointer",tabindex:"0",
+        role:"button","aria-label":"Quadrant "+q.key,class:"quad-hit"});
+      (function(key){
+        qhit.addEventListener("click", function(){ selectQuadrant(key); });
+        qhit.addEventListener("keydown", function(e){
+          if (e.key==="Enter"||e.key===" "){ e.preventDefault(); selectQuadrant(key); }
+        });
+      }(q.key));
+      quadrantLayer.appendChild(qhit);
+
+      quadrantLayer.appendChild(txt(svgEl("text",{
+        x:q.rx+q.rw/2, y:q.ry+q.rh/2,
+        "text-anchor":"middle","dominant-baseline":"middle",
+        fill:"rgba(169,186,203,0.6)","font-size":"30","font-weight":"700",
+        "font-family":"Space Grotesk,system-ui,sans-serif","pointer-events":"none",
+        class:"quad-label"
+      }), q.key));
+    });
+    svg.appendChild(quadrantLayer);
+
     cursorRing = svgEl("circle",{cx:X(0),cy:Y(0),r:11,class:"cursor-ring"});
     svg.appendChild(cursorRing);
     marker = svgEl("circle",{cx:X(0),cy:Y(0),r:7,class:"marker"});
     svg.appendChild(marker);
+    /* Pre-plotted dot for quadrant questions (sits above quadrant layer) */
+    questionDot = svgEl("circle",{cx:X(0),cy:Y(0),r:7,
+      fill:"var(--x)",stroke:"#fff","stroke-width":"2","pointer-events":"none"});
+    questionDot.style.opacity = 0;
+    svg.appendChild(questionDot);
   }
 
-  /* ---- placing a point ---- */
+  /* ---- quadrant selection ---- */
+  function selectQuadrant(key){
+    Object.keys(qSelRects).forEach(function(k){
+      qSelRects[k].setAttribute("fill","rgba(47,109,240,0)");
+    });
+    if (selectedQuadrant === key){
+      selectedQuadrant = null;
+      btnSubmit.disabled = true;
+    } else {
+      qSelRects[key].setAttribute("fill","rgba(47,109,240,0.6)");
+      selectedQuadrant = key;
+      btnSubmit.disabled = false;
+    }
+  }
+
+  function clearQuadrantSelection(){
+    Object.keys(qSelRects).forEach(function(k){
+      qSelRects[k].setAttribute("fill","rgba(47,109,240,0)");
+    });
+    // Does not reset selectedQuadrant — advance() does that for new questions;
+    // Back navigation pre-sets it before calling loadTarget().
+  }
+
+  /* ---- placing a point (plot questions only) ---- */
   function place(gx, gy){
+    if (QUESTIONS[idx].type === "quadrant") return;
     if (subAnswerMode) {
       marker.setAttribute("cx", X(gx));
       marker.setAttribute("cy", Y(gy));
@@ -391,6 +503,7 @@
   }
   svg.addEventListener("keydown", function(e){
     if (!subAnswerMode && locked) return;
+    if (QUESTIONS[idx].type === "quadrant") return;
     var moved = true;
     switch(e.key){
       case "ArrowLeft":  cursor.x = Math.max(-RANGE, cursor.x-1); break;
@@ -409,63 +522,87 @@
      Navigation helpers
   ---------------------------------------------------------------- */
   function findNextTarget(fromIdx){
-    if (fromIdx + 1 < TARGETS.length) return fromIdx + 1;
-    // Wrap: find first unanswered question
-    for (var i = 0; i < TARGETS.length; i++){
+    if (fromIdx + 1 < QUESTIONS.length) return fromIdx + 1;
+    for (var i = 0; i < QUESTIONS.length; i++){
       if (!submittedIdxs[i]) return i;
     }
-    return -1; // all done
+    return -1;
   }
 
   function updateNavButtons(){
     btnBack.disabled = (idx === 0);
-    btnNext.disabled = (idx >= TARGETS.length - 1);
+    btnNext.disabled = (idx >= QUESTIONS.length - 1);
   }
 
-  /* loadTarget — reset grid to current idx.
-     Pass keepHegemon=true only for the Retry flow (Hegemon stays open). */
-  function loadTarget(keepHegemon){
-    var t = TARGETS[idx];
-    if (!keepHegemon) {
-      HegemonBot.reset();
-      verificationMode = false;
-      currentTriggeredGroup = null;
-      btnSubmit.textContent = 'Submit';
-      btnSubmit.style.background = '';   // reset to CSS coral
-    }
+  function loadTarget(){
+    var q = QUESTIONS[idx];
+    var isPlot = (q.type === "plot");
+
+    HegemonBot.reset();
+    currentTriggeredGroup = null;
     locked = false;
     cursor = {x:0, y:0};
-    svg.classList.remove("locked", "hg-submode");
+    svg.classList.remove("locked","hg-submode","quad-mode","quad-no-labels");
     marker.style.opacity = 0;
+    questionDot.style.opacity = 0;
     cursorRing.style.opacity = 0;
     readout.style.display = "none";
     subAnswerMode = false;
+    clearQuadrantSelection();
 
-    if (placed) {
-      // Restore a saved point (Back navigation or Retry refresh)
-      marker.setAttribute("cx", X(placed.x));
-      marker.setAttribute("cy", Y(placed.y));
-      marker.style.opacity = 1;
-      btnSubmit.disabled = false;
-    } else {
-      btnSubmit.disabled = true;
-    }
-
-    elProg.textContent = (idx+1)+" of "+TARGETS.length;
-    elTarget.innerHTML =
-      "<span class='pair'>(<span class='x'>"+fmt(t.x)+"</span>, <span class='y'>"+fmt(t.y)+"</span>)</span>";
-    elStatus.textContent = placed ? "Point placed. Submit when ready." : "No point placed yet.";
+    elProg.textContent = (idx+1)+" of "+QUESTIONS.length;
     updateNavButtons();
+
+    if (isPlot){
+      quadrantLayer.style.display = "none";
+      elPrompt.innerHTML =
+        "Plot the point <span class='pair'>(<span class='x'>"+fmt(q.x)+
+        "</span>, <span class='y'>"+fmt(q.y)+"</span>)</span>";
+      elHint.textContent = "Click an intersection on the grid. Or focus the grid and use arrow keys, then Enter.";
+
+      if (placed){
+        marker.setAttribute("cx", X(placed.x));
+        marker.setAttribute("cy", Y(placed.y));
+        marker.style.opacity = 1;
+        btnSubmit.disabled = false;
+        elStatus.textContent = "Point placed. Submit when ready.";
+      } else {
+        btnSubmit.disabled = true;
+        elStatus.textContent = "No point placed yet.";
+      }
+    } else {
+      quadrantLayer.style.display = "";
+      svg.classList.add("quad-mode");
+      if (q.format === 'name') {
+        svg.classList.add("quad-no-labels");
+        elPrompt.textContent = "Click Quadrant "+q.correct+".";
+      } else {
+        elPrompt.innerHTML = "In which quadrant does <span class='pair'>(<span class='x'>"+fmt(q.x)+"</span>, <span class='y'>"+fmt(q.y)+"</span>)</span> appear?";
+      }
+      elHint.textContent = "Click a region on the grid to select it, then Submit.";
+
+      if (selectedQuadrant){
+        qSelRects[selectedQuadrant].setAttribute("fill","rgba(47,109,240,0.6)");
+        btnSubmit.disabled = false;
+        elStatus.textContent = "Quadrant selected. Submit when ready.";
+      } else {
+        btnSubmit.disabled = true;
+        elStatus.textContent = "No quadrant selected yet.";
+      }
+    }
   }
 
-  /* advance — record submission, move to next target (or finish) */
+  /* advance — record submission, move to next question (or finish) */
   function advance(){
     submittedIdxs[idx] = true;
-    placedByIdx[idx] = placed;   // preserve submitted answer for Back navigation
+    if (QUESTIONS[idx].type === "plot") { placedByIdx[idx] = placed; }
+    else                                 { selectedByIdx[idx] = selectedQuadrant; }
     var next = findNextTarget(idx);
     if (next === -1){ finish(); return; }
-    delete placedByIdx[next]; // fresh state for destination
+    delete placedByIdx[next];
+    delete selectedByIdx[next];
     placed = null;
+    selectedQuadrant = null;
     idx = next;
     loadTarget();
   }
@@ -473,117 +610,144 @@
   /* ----------------------------------------------------------------
      SUBMIT
   ---------------------------------------------------------------- */
-  function recordSubmission(record){
+  function recordPlotSubmission(record){
     submissions.push(record);
     window.hegemonSubmissions = submissions;
-    console.log("[hegemon] submission", record);
-    showReadout(record);
+    console.log("[hegemon] plot submission", record);
 
-    var isCorrect = (record.plottedX === record.targetX && record.plottedY === record.targetY);
+    roCoords.innerHTML =
+      "target <span class='pair'>(<span class='x'>"+fmt(record.targetX)+"</span>, <span class='y'>"+fmt(record.targetY)+"</span>)</span>" +
+      "&nbsp;&nbsp;·&nbsp;&nbsp;" +
+      "plotted <span class='pair'>(<span class='x'>"+fmt(record.plottedX)+"</span>, <span class='y'>"+fmt(record.plottedY)+"</span>)</span>";
+    readout.style.display = "block";
 
-    // While Hegemon is open (or in verification mode), route through bot callbacks.
-    if (HegemonBot.isOpen() || verificationMode) {
-      if (isCorrect) {
-        HegemonBot.notifyCorrect();
-      } else {
-        var retryCode = HegemonDetect.detectMisconception(record);
-        HegemonBot.notifyWrong(retryCode);
-      }
+    var isCorrect = (record.plottedX===record.targetX && record.plottedY===record.targetY);
+
+    if (HegemonBot.isOpen()){
+      if (isCorrect) HegemonBot.notifyCorrect();
+      else           HegemonBot.notifyWrong(HegemonDetect.detectMisconception(record));
       return;
     }
 
-    // Normal attempt tracking
-    if (!isCorrect) {
+    if (!isCorrect){
       var code = HegemonDetect.detectMisconception(record);
       var group = code ? errorGroupFor(code) : null;
-      if (group && !mcTriggered[group] && !mcCountedAtIdx[idx]) {
-        mcCountedAtIdx[idx] = group; // store group so Back can undo this contribution
+      if (group && !mcTriggered[group] && !mcCountedAtIdx[idx]){
+        mcCountedAtIdx[idx] = group;
         mcErrorCount[group] = (mcErrorCount[group] || 0) + 1;
-        if (mcErrorCount[group] >= 2) {
+        if (mcErrorCount[group] >= 2){
           mcTriggered[group] = true;
           currentTriggeredGroup = group;
-          var ctx = HegemonMarkers.snapshot();
           HegemonBot.open({
             misconceptionCode: code,
-            coords: {
-              targetX: record.targetX, targetY: record.targetY,
-              plottedX: record.plottedX, plottedY: record.plottedY
-            },
-            markerContext: ctx
+            coords: { targetX:record.targetX, targetY:record.targetY,
+                      plottedX:record.plottedX, plottedY:record.plottedY },
+            markerContext: HegemonMarkers.snapshot(),
+            questionLabel: 'Question ' + (idx + 1)
           });
         }
       }
     }
   }
 
-  function showReadout(r){
-    roCoords.innerHTML =
-      "target <span class='pair'>(<span class='x'>"+fmt(r.targetX)+"</span>, <span class='y'>"+fmt(r.targetY)+"</span>)</span>" +
-      "&nbsp;&nbsp;·&nbsp;&nbsp;" +
-      "plotted <span class='pair'>(<span class='x'>"+fmt(r.plottedX)+"</span>, <span class='y'>"+fmt(r.plottedY)+"</span>)</span>";
-    readout.style.display = "block";
-  }
+  function recordQuadrantSubmission(q, named){
+    var record = { index:idx, questionType:"quadrant",
+      targetX:q.x, targetY:q.y, corner:q.corner, namedQuadrant:named, correct:q.correct };
+    submissions.push(record);
+    window.hegemonSubmissions = submissions;
+    console.log("[hegemon] quadrant submission", record);
 
-  btnSubmit.addEventListener("click", function(){
-    // Retry mode: clicking loads a fresh same-slot target (not a submission).
-    if (verificationMode && btnSubmit.textContent === 'Retry') {
-      TARGETS[idx] = TargetGenerator.generateTargetForSlot(idx, TARGETS[idx]);
-      if (currentTriggeredGroup) {
-        delete mcTriggered[currentTriggeredGroup];
-        mcErrorCount[currentTriggeredGroup] = 0;
-      }
-      placed = null;
-      loadTarget(true); // keepHegemon — panel stays open
+    roCoords.innerHTML =
+      "point <span class='pair'>(<span class='x'>"+fmt(q.x)+"</span>, <span class='y'>"+fmt(q.y)+"</span>)</span>" +
+      "&nbsp;&nbsp;·&nbsp;&nbsp;named: <strong>"+named+"</strong>";
+    readout.style.display = "block";
+
+    var isCorrect = (named === q.correct);
+
+    if (HegemonBot.isOpen()){
+      if (isCorrect) HegemonBot.notifyCorrect();
+      else           HegemonBot.notifyWrong(HegemonDetect.detectQuadrantError(q.corner, named));
       return;
     }
 
-    if (locked || !placed) return;
-    var tgt = TARGETS[idx];
-    recordSubmission({
-      index: idx,
-      targetX: tgt.x, targetY: tgt.y,
-      plottedX: placed.x, plottedY: placed.y
-    });
+    if (!isCorrect){
+      var code = HegemonDetect.detectQuadrantError(q.corner, named);
+      var group = code || "MC-04-unclassified";
+      if (!mcTriggered[group] && !mcCountedAtIdx[idx]){
+        mcCountedAtIdx[idx] = group;
+        mcErrorCount[group] = (mcErrorCount[group] || 0) + 1;
+        if (mcErrorCount[group] >= 2){
+          mcTriggered[group] = true;
+          currentTriggeredGroup = group;
+          HegemonBot.open({
+            misconceptionCode: code,
+            coords: { targetX:q.x, targetY:q.y },
+            markerContext: HegemonMarkers.snapshot(),
+            taskType: "quadrant",
+            questionLabel: 'Question ' + (idx + 1)
+          });
+        }
+      }
+    }
+  }
+
+  btnSubmit.addEventListener("click", function(){
+    if (locked) return;
+    var q = QUESTIONS[idx];
+    if (q.type === "plot"){
+      if (!placed) return;
+      recordPlotSubmission({ index:idx, questionType:"plot",
+        targetX:q.x, targetY:q.y, plottedX:placed.x, plottedY:placed.y });
+    } else {
+      if (!selectedQuadrant) return;
+      recordQuadrantSubmission(q, selectedQuadrant);
+    }
     locked = true;
     svg.classList.add("locked");
     btnSubmit.disabled = true;
     elStatus.textContent = "Recorded.";
-
-    // Auto-advance unless Hegemon opened on this submission.
-    if (!HegemonBot.isOpen() && !verificationMode) {
-      advance();
-    }
+    if (!HegemonBot.isOpen()) advance();
   });
 
   /* ---- Back button ---- */
   btnBack.addEventListener("click", function(){
     if (idx === 0) return;
-    placedByIdx[idx] = placed;
+    // Save current position's state
+    if (QUESTIONS[idx].type === "plot") { placedByIdx[idx] = placed; }
+    else                                 { selectedByIdx[idx] = selectedQuadrant; }
 
-    // Undo this question's contribution to the error count so a future
-    // re-attempt at the same question can count again independently.
     var countedGroup = mcCountedAtIdx[idx];
-    if (countedGroup) {
+    if (countedGroup){
       delete mcCountedAtIdx[idx];
-      mcErrorCount[countedGroup] = Math.max(0, (mcErrorCount[countedGroup] || 0) - 1);
-      if (mcTriggered[countedGroup] && mcErrorCount[countedGroup] < 2) {
+      mcErrorCount[countedGroup] = Math.max(0, (mcErrorCount[countedGroup]||0) - 1);
+      if (mcTriggered[countedGroup] && mcErrorCount[countedGroup] < 2){
         delete mcTriggered[countedGroup];
         currentTriggeredGroup = null;
       }
     }
 
     idx--;
-    placed = placedByIdx[idx] || null;
+    // Restore saved state for destination question
+    if (QUESTIONS[idx].type === "plot"){
+      placed = placedByIdx[idx] || null;
+      selectedQuadrant = null;
+    } else {
+      selectedQuadrant = selectedByIdx[idx] || null;
+      placed = null;
+    }
     loadTarget();
   });
 
   /* ---- Next button (skip) ---- */
   btnNext.addEventListener("click", function(){
-    if (idx >= TARGETS.length - 1) return;
-    placedByIdx[idx] = placed;          // save in case student comes back
+    if (idx >= QUESTIONS.length - 1) return;
+    if (QUESTIONS[idx].type === "plot") { placedByIdx[idx] = placed; }
+    else                                 { selectedByIdx[idx] = selectedQuadrant; }
     var nextIdx = idx + 1;
-    delete placedByIdx[nextIdx];        // fresh for destination
+    delete placedByIdx[nextIdx];
+    delete selectedByIdx[nextIdx];
     placed = null;
+    selectedQuadrant = null;
     idx = nextIdx;
     loadTarget();
   });
@@ -593,13 +757,10 @@
     advance();
   });
 
-  /* ---- Verification: Submit becomes Retry (blue) after successful scaffolding ---- */
-  document.addEventListener('hegemon:verify-ready', function(){
-    verificationMode = true;
-    btnSubmit.textContent = 'Retry';
-    btnSubmit.style.background = '#2f6df0';
-    btnSubmit.disabled = false; // student clicks Retry to load new target
-    elStatus.textContent = 'Click Retry to try a new question of the same type.';
+  /* When Hegemon resolves via chat ([NEXT_QUESTION]) rather than a re-submission,
+     advance() was never called from the submit button, so mark+advance here. */
+  document.addEventListener('hegemon:next-question', function(){
+    if (!submittedIdxs[idx]) advance();
   });
 
   /* ---- Grid sub-answer mode (Hegemon [GRID_PROMPT]) ---- */
@@ -620,7 +781,8 @@
   /* ---- Finish / restart ---- */
   function finish(){
     elTask.style.display = "none";
-    doneCount.textContent = submissions.length + " of " + TARGETS.length + " points recorded.";
+    doneCount.textContent = submissions.length + " of " + QUESTIONS.length + " questions recorded.";
+    btnDownloadChat.style.display = HegemonBot.hasHistory() ? "inline-block" : "none";
     elDone.style.display = "block";
     console.log("[hegemon] all submissions", submissions);
   }
@@ -630,17 +792,24 @@
     submissions = [];
     submittedIdxs = {};
     placedByIdx = {};
+    selectedByIdx = {};
     mcErrorCount = {};
     mcTriggered = {};
     mcCountedAtIdx = {};
     currentTriggeredGroup = null;
-    verificationMode = false;
     window.hegemonSubmissions = submissions;
     elDone.style.display = "none";
     elTask.style.display = "block";
     placed = null;
+    selectedQuadrant = null;
+    HegemonBot.clearHistory();
+    QUESTIONS = makeQuestions();   // fresh random coordinates each restart
     loadTarget();
     svg.focus();
+  });
+
+  btnDownloadChat.addEventListener("click", function(){
+    HegemonBot.downloadChat();
   });
 
   /* ---- go ---- */

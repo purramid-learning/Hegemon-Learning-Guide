@@ -137,8 +137,30 @@
     return null;                                       // unmatched — route to fallback handler
   }
 
+  /* ---- MC-04 quadrant-naming detector ----
+     Takes the corner a point occupies and the quadrant the student named.
+     Returns null (correct), an MC-04x code (best guess from single response),
+     or null (unclassified — some corners are ambiguous without a second probe). */
+  var MC04_SCHEMES = {
+    correct:  { TR:'I',  TL:'II', BL:'III', BR:'IV'  },
+    'MC-04a': { TR:'IV', TL:'I',  BL:'II',  BR:'III' },
+    'MC-04b': { TR:'I',  TL:'IV', BL:'III', BR:'II'  },
+    'MC-04c': { TR:'II', TL:'I',  BL:'IV',  BR:'III' },
+    'MC-04d': { TR:'II', TL:'I',  BL:'III', BR:'IV'  }
+  };
+  var MC04_CODES = ['MC-04a','MC-04b','MC-04c','MC-04d'];
+
+  function detectQuadrantError(corner, named) {
+    if (named === MC04_SCHEMES.correct[corner]) return null;
+    for (var i = 0; i < MC04_CODES.length; i++) {
+      if (named === MC04_SCHEMES[MC04_CODES[i]][corner]) return MC04_CODES[i];
+    }
+    return null; // named quadrant matches no known scheme — unclassified
+  }
+
   return {
     detectMisconception: detectMisconception,
+    detectQuadrantError: detectQuadrantError,
     predicates: { mc01: mc01, mc02: mc02, mc03: mc03, mc06: mc06, mc07: mc07, mc08: mc08 },
     EVALUATION_ORDER: ORDER.map(function (o) { return o.code; })
   };
