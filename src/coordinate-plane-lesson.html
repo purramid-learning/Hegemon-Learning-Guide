@@ -1,4 +1,19 @@
 <!DOCTYPE html>
+<!--
+  Copyright 2026 Joseph L. Selby, Purramid Learning®, Inc.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -49,6 +64,8 @@
     -webkit-font-smoothing:antialiased;
   }
   .wrap{max-width:var(--maxw);margin:0 auto;padding:0 22px}
+  .skip-link{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
+  .skip-link:focus{position:fixed;top:12px;left:12px;width:auto;height:auto;padding:10px 16px;background:var(--ink);color:#fff;border-radius:6px;font-weight:600;font-size:.9rem;z-index:9999;overflow:visible}
 
   /* invisible learner-state markers — read by the bot, never rendered */
   .hg-marker{display:none}
@@ -148,6 +165,11 @@
   .term{font-weight:600}
   .term.x{color:var(--x)}
   .term.y{color:var(--y)}
+  .hg-term{text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;cursor:pointer}
+  .hg-term:hover{text-decoration-style:solid}
+  .hg-term:focus-visible{outline:2px solid var(--focus,#2f6df0);outline-offset:3px;border-radius:2px;text-decoration-style:solid}
+  .hg-term-icon{display:inline;width:14px;height:14px;vertical-align:middle;margin-left:3px;opacity:.55;position:relative;top:-1px}
+  .hg-term:hover .hg-term-icon{opacity:1}
 
   .callout{
     border-left:4px solid var(--x);
@@ -298,15 +320,17 @@
 </head>
 <body>
 
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
 <header class="masthead">
   <div class="wrap">
     <p class="crumb">Math · The Coordinate Plane</p>
     <h1 class="title">Finding points on the <span class="c-x">coordinate</span> <span class="c-y">plane</span></h1>
-    <p class="lede">Two numbers are enough to pin down any spot on a grid — once you know which number does which job.</p>
+    <p class="lede">Two numbers are enough to pin down any spot on a grid. Once you know which number does which job.</p>
   </div>
 </header>
 
-<div class="wrap">
+<main class="wrap" id="main-content">
   <section class="goals" aria-label="Lesson goals">
     <h2>What you'll be able to do</h2>
     <ul>
@@ -324,8 +348,8 @@
     <div class="eyebrow"><span class="coord-badge">step 1</span><span class="kicker">A line you already know</span></div>
     <h2>Start with one number line</h2>
     <span class="hg-marker" data-topic="number-line" data-prereqs="" data-likely-misconceptions="MC-03" aria-hidden="true"></span>
-    <p>You've used a <strong>number line</strong>. It stretches out from <span class="pair">0</span> in two directions: positive numbers to the right, negative numbers to the left. Every number marks one exact spot.</p>
-    <p>One number line is great for one piece of information — like temperature, or how many steps forward you took. But it can't tell you <em>where</em> something is on a flat surface, like a seat in a movie theater or a square on a map. For that, you need a second direction.</p>
+    <p>You've used a <strong class="hg-term" tabindex="0" role="button"data-focus-topic="number-line" data-display-term="number line">number line<img class="hg-term-icon" src="images/hegemon-inline.svg" alt="" aria-hidden="true"></strong>. It stretches out from <span class="pair">0</span> in two directions: positive numbers to the right, negative numbers to the left. Every number marks one exact spot.</p>
+    <p>One number line is great for one piece of information, like temperature, or how many steps forward you took. But it can't tell you <em>where</em> something is on a flat surface, like a seat in a movie theater or a square on a map. For that, you need a second direction.</p>
     <figure class="figure">
       <div class="plane-svg" data-plane='{"type":"numberline","range":5}'></div>
       <figcaption>A single number line: distance and direction from zero, but only along one path.</figcaption>
@@ -337,12 +361,13 @@
     <div class="eyebrow"><span class="coord-badge">step 2</span><span class="kicker">Two lines, one plane</span></div>
     <h2>Cross two number lines</h2>
     <span class="hg-marker" data-topic="coordinate-plane" data-prereqs="number-line" data-likely-misconceptions="" aria-hidden="true"></span>
-    <p>Take a horizontal number line and a vertical number line, and cross them so their zeros line up. Now you have a <strong>coordinate plane</strong> — a flat grid where every point has an address.</p>
+    <p>Take a horizontal number line and a vertical number line, and cross them so their zeros line up. Now you have a <strong class="hg-term" tabindex="0" role="button"data-focus-topic="coordinate-plane" data-display-term="coordinate plane">coordinate plane<img class="hg-term-icon" src="images/hegemon-inline.svg" alt="" aria-hidden="true"></strong>, a flat grid where every point has an address.</p>
+    <span class="hg-marker" data-topic="axes" data-prereqs="number-line, coordinate-plane" data-likely-misconceptions="" aria-hidden="true"></span>
     <span class="hg-marker" data-topic="x-axis" data-prereqs="number-line, coordinate-plane" data-likely-misconceptions="" aria-hidden="true"></span>
     <span class="hg-marker" data-topic="y-axis" data-prereqs="number-line, coordinate-plane" data-likely-misconceptions="" aria-hidden="true"></span>
     <span class="hg-marker" data-topic="origin" data-prereqs="x-axis, y-axis" data-likely-misconceptions="MC-03" aria-hidden="true"></span>
-    <p>The two lines are called <strong>axes</strong>. The horizontal one is the <span class="term x">x-axis</span>. The vertical one is the <span class="term y">y-axis</span>. The spot where they cross — where both lines read zero — is the <strong>origin</strong>, written <span class="pair">(<span class="x">0</span>, <span class="y">0</span>)</span>.</p>
-    <div class="callout"><strong>Notice:</strong> the origin isn't "the middle" of the picture — it's the one point where the two axes cross. That's true no matter how much of the grid you can see.</div>
+    <p>The two lines are called <strong class="hg-term" tabindex="0" role="button"data-focus-topic="axes" data-display-term="axes">axes<img class="hg-term-icon" src="images/hegemon-inline.svg" alt="" aria-hidden="true"></strong>. The horizontal one is the <span class="term x">x-axis</span>. The vertical one is the <span class="term y">y-axis</span>. The spot where they cross—where both lines read zero—is the <strong class="hg-term" tabindex="0" role="button"data-focus-topic="origin" data-display-term="origin">origin<img class="hg-term-icon" src="images/hegemon-inline.svg" alt="" aria-hidden="true"></strong>, written <span class="pair">(<span class="x">0</span>, <span class="y">0</span>)</span>.</p>
+    <div class="callout"><strong>Notice:</strong> the origin isn't "the middle" of the picture. It's the one point where the two axes cross. That's true no matter how much of the grid you can see.</div>
     <figure class="figure">
       <div class="plane-svg" data-plane='{"type":"plane","range":5,"labels":true}'></div>
       <figcaption>The <span style="color:var(--x);font-weight:600">x-axis</span> runs across; the <span style="color:var(--y);font-weight:600">y-axis</span> runs up and down. They meet at the origin.</figcaption>
@@ -354,9 +379,9 @@
     <div class="eyebrow"><span class="coord-badge">step 3</span><span class="kicker">Four regions</span></div>
     <h2>The axes make four quadrants</h2>
     <span class="hg-marker" data-topic="quadrants" data-prereqs="x-axis, y-axis, origin" data-likely-misconceptions="MC-04a, MC-04b, MC-04c" aria-hidden="true"></span>
-    <p>The two axes split the plane into four corners called <strong>quadrants</strong>. They're numbered with Roman numerals <strong>I, II, III, IV</strong>, starting at the top-right and going counter-clockwise.</p>
+    <p>The two axes split the plane into four corners called <strong class="hg-term" tabindex="0" role="button"data-focus-topic="quadrants" data-display-term="quadrants">quadrants<img class="hg-term-icon" src="images/hegemon-inline.svg" alt="" aria-hidden="true"></strong>. They're numbered with Roman numerals <strong>I, II, III, IV</strong>, starting at the top-right and going counter-clockwise.</p>
     <span class="hg-marker" data-topic="sign-to-quadrant" data-prereqs="quadrants, number-line" data-likely-misconceptions="MC-04a, MC-04b, MC-04c" aria-hidden="true"></span>
-    <p>Which quadrant a point lands in depends only on the <em>signs</em> of its two numbers — whether each is positive or negative.</p>
+    <p>Which quadrant a point lands in depends only on the <em>signs</em> of its two numbers—whether each is positive or negative.</p>
     <figure class="figure">
       <div class="plane-svg" data-plane='{"type":"plane","range":5,"labels":true,"quadrants":true}'></div>
       <figcaption>Quadrants I–IV. The signs of a point's two numbers decide which one it's in.</figcaption>
@@ -390,13 +415,14 @@
     <div class="eyebrow"><span class="coord-badge">step 4</span><span class="kicker">The address of a point</span></div>
     <h2>Ordered pairs: <span class="pair">(<span class="x">x</span>, <span class="y">y</span>)</span></h2>
     <span class="hg-marker" data-topic="ordered-pair" data-prereqs="x-axis, y-axis, origin" data-likely-misconceptions="MC-01" aria-hidden="true"></span>
-    <p>A point's address is an <strong>ordered pair</strong> of two numbers, called its <strong>coordinates</strong>, written inside parentheses and separated by a comma.</p>
+    <span class="hg-marker" data-topic="coordinates" data-prereqs="x-axis, y-axis, origin" data-likely-misconceptions="MC-01" aria-hidden="true"></span>
+    <p>A point's address is an <strong class="hg-term" tabindex="0" role="button"data-focus-topic="ordered-pair" data-display-term="ordered pair">ordered pair<img class="hg-term-icon" src="images/hegemon-inline.svg" alt="" aria-hidden="true"></strong> of two numbers, called its <strong class="hg-term" tabindex="0" role="button"data-focus-topic="coordinates" data-display-term="coordinates">coordinates<img class="hg-term-icon" src="images/hegemon-inline.svg" alt="" aria-hidden="true"></strong>, written inside parentheses and separated by a comma.</p>
     <p>The word <em>ordered</em> is the whole game: the order tells you which number does which job.</p>
     <ul>
-      <li>The <strong>first</strong> number is the <span class="term x">x-coordinate</span> — how far to move <span class="term x">across</span> (right if positive, left if negative).</li>
-      <li>The <strong>second</strong> number is the <span class="term y">y-coordinate</span> — how far to move <span class="term y">up or down</span> (up if positive, down if negative).</li>
+      <li>The <strong>first</strong> number is the <span class="term x">x-coordinate</span>: how far to move <span class="term x">across</span> (right if positive, left if negative).</li>
+      <li>The <strong>second</strong> number is the <span class="term y">y-coordinate</span>: how far to move <span class="term y">up or down</span> (up if positive, down if negative).</li>
     </ul>
-    <span class="hg-marker" data-topic="plotting-across-then-up" data-prereqs="ordered-pair, origin" data-likely-misconceptions="MC-01, MC-08" aria-hidden="true"></span>
+    <span class="hg-marker" data-topic="plotting-across-then-up" data-prereqs="ordered-pair, origin" data-likely-misconceptions="MC-01" aria-hidden="true"></span>
     <p>To plot a point, start at the origin, move <span class="term x">across first</span>, then <span class="term y">up or down</span>. Here's <span class="pair">(<span class="x">3</span>, <span class="y">2</span>)</span>: go <span class="term x">right 3</span>, then <span class="term y">up 2</span>.</p>
     <figure class="figure">
       <div class="plane-svg" data-plane='{"type":"plane","range":5,"labels":true,"path":{"x":3,"y":2},"points":[{"x":3,"y":2,"label":"(3, 2)"}]}'></div>
@@ -410,25 +436,25 @@
   <section class="lesson">
     <div class="eyebrow"><span class="coord-badge">step 5</span><span class="kicker">Going negative</span></div>
     <h2>Plotting in every quadrant</h2>
-    <span class="hg-marker" data-topic="negative-x" data-prereqs="number-line, plotting-across-then-up" data-likely-misconceptions="MC-02, MC-06" aria-hidden="true"></span>
-    <span class="hg-marker" data-topic="negative-y" data-prereqs="number-line, plotting-across-then-up" data-likely-misconceptions="MC-02, MC-06" aria-hidden="true"></span>
-    <p>The rule never changes when numbers go negative — you just move the other way. A negative <span class="term x">x</span> means go <span class="term x">left</span>; a negative <span class="term y">y</span> means go <span class="term y">down</span>.</p>
+    <span class="hg-marker" data-topic="negative-x" data-prereqs="number-line, plotting-across-then-up" data-likely-misconceptions="MC-01" aria-hidden="true"></span>
+    <span class="hg-marker" data-topic="negative-y" data-prereqs="number-line, plotting-across-then-up" data-likely-misconceptions="MC-01" aria-hidden="true"></span>
+    <p>The rule never changes when numbers go negative. You just move the other way. A negative <span class="term x">x</span> means go <span class="term x">left</span>; a negative <span class="term y">y</span> means go <span class="term y">down</span>.</p>
     <p>Look at <span class="pair">(<span class="x">−4</span>, <span class="y">3</span>)</span>: from the origin, go <span class="term x">left 4</span>, then <span class="term y">up 3</span>. That lands in Quadrant II.</p>
     <figure class="figure">
       <div class="plane-svg" data-plane='{"type":"plane","range":5,"labels":true,"path":{"x":-4,"y":3},"points":[{"x":-4,"y":3,"label":"(−4, 3)"}]}'></div>
       <figcaption>Same two steps, new directions: <span style="color:var(--x);font-weight:600">left 4</span>, then <span style="color:var(--y);font-weight:600">up 3</span>.</figcaption>
     </figure>
     <span class="hg-marker" data-topic="reading-coordinates" data-prereqs="plotting-across-then-up" data-likely-misconceptions="MC-01" aria-hidden="true"></span>
-    <p><strong>Reading a point</strong> works in reverse. Find how far it sits <span class="term x">across</span> from the origin, then how far <span class="term y">up or down</span>. Write the across number first.</p>
+    <p><strong class="hg-term" tabindex="0" role="button"data-focus-topic="reading-coordinates" data-display-term="Reading a point">Reading a point<img class="hg-term-icon" src="images/hegemon-inline.svg" alt="" aria-hidden="true"></strong> works in reverse. Find how far it sits <span class="term x">across</span> from the origin, then how far <span class="term y">up or down</span>. Write the across number first.</p>
     <span class="hg-marker" data-topic="zero-coordinate" data-prereqs="origin, x-axis, y-axis" data-likely-misconceptions="MC-07, MC-08" aria-hidden="true"></span>
-    <p>And watch for <strong>zeros</strong>: a point like <span class="pair">(<span class="x">0</span>, <span class="y">4</span>)</span> has no across-movement, so it sits right <em>on</em> the <span class="term y">y-axis</span>. A point like <span class="pair">(<span class="x">−3</span>, <span class="y">0</span>)</span> sits on the <span class="term x">x-axis</span>.</p>
+    <p>And watch for <strong class="hg-term" tabindex="0" role="button"data-focus-topic="zero-coordinate" data-display-term="zeros">zeros<img class="hg-term-icon" src="images/hegemon-inline.svg" alt="" aria-hidden="true"></strong>: a point like <span class="pair">(<span class="x">0</span>, <span class="y">4</span>)</span> has no across-movement, so it sits right <em>on</em> the <span class="term y">y-axis</span>. A point like <span class="pair">(<span class="x">−3</span>, <span class="y">0</span>)</span> sits on the <span class="term x">x-axis</span>.</p>
   </section>
 
   <!-- check your understanding -->
   <section class="lesson" id="check">
     <div class="eyebrow"><span class="coord-badge">check</span><span class="kicker">Check your understanding</span></div>
     <h2>Quick checks</h2>
-    <p>Try each one before you reveal the answer. These are just for you — no score is recorded.</p>
+    <p>Try each one before you reveal the answer. These are just for you. No score is recorded.</p>
 
     <div class="check" data-answer="2" data-practice-type="quadrant">
       <p class="qno">Question 1</p>
@@ -486,8 +512,8 @@
   <!-- handoff -->
   <section class="handoff">
     <h2>Ready for the quiz?</h2>
-    <p>Head to the Lesson 1 Quiz to plot points and identify quadrants. Work at your own pace — you can ask for a hint whenever you're stuck.</p>
-    <a class="btn" href="#" data-practice-link>Go to Lesson 1 Quiz →</a>
+    <p>Head to the Lesson 1 Quiz to plot points and identify quadrants. Work at your own pace. You can ask for a hint whenever you're stuck.</p>
+    <a class="btn" href="plotting-grid.html">Go to Lesson 1 Quiz →</a>
   </section>
 
 </main>
@@ -598,7 +624,9 @@
     (spec.points||[]).forEach(function(p){
       svg.appendChild(svgEl("circle",{cx:X(p.x),cy:Y(p.y),r:6,class:"pt"}));
       if (p.label){
-        var dx = p.x<0 ? -9 : 9, anc = p.x<0 ? "end" : "start";
+        var flipEdge = Math.abs(p.x) >= range - 1;
+        var placeRight = p.x < 0 ? flipEdge : !flipEdge;
+        var dx = placeRight ? 9 : -9, anc = placeRight ? "start" : "end";
         var tl = svgEl("text",{x:X(p.x)+dx,y:Y(p.y)-9,"text-anchor":anc,class:"pt-label"});
         svg.appendChild(txt(tl,p.label));
       }
@@ -621,6 +649,23 @@
     var answer = parseInt(card.getAttribute("data-answer"), 10);
     var opts = Array.prototype.slice.call(card.querySelectorAll(".opt"));
     var fb = card.querySelector(".feedback");
+    var optsEl = card.querySelector(".opts");
+
+    // Roving tabindex: first option in tab order; Up/Down arrows navigate within group.
+    opts.forEach(function(btn, i) { btn.tabIndex = i === 0 ? 0 : -1; });
+    optsEl.addEventListener("keydown", function(e) {
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      e.preventDefault();
+      var idx = opts.indexOf(document.activeElement);
+      if (idx === -1) return;
+      var next = e.key === "ArrowDown"
+        ? (idx + 1) % opts.length
+        : (idx - 1 + opts.length) % opts.length;
+      opts.forEach(function(b) { b.tabIndex = -1; });
+      opts[next].tabIndex = 0;
+      opts[next].focus();
+    });
+
     opts.forEach(function(opt, idx){
       opt.addEventListener("click", function(){
         if (card.classList.contains("done")) return;
@@ -764,6 +809,24 @@
     functionUrl: 'https://us-central1-hegemon-learning-guide.cloudfunctions.net/scaffold'
   });
   PracticeModal.init();
+  HegemonMarkers.track();
+  function activateTerm(term) {
+    var focusTopic = term.getAttribute('data-focus-topic');
+    var displayTerm = term.getAttribute('data-display-term');
+    var markerCtx = HegemonMarkers.read({ focus: focusTopic });
+    HegemonBot.openFocus(displayTerm, focusTopic, markerCtx);
+  }
+  document.addEventListener('click', function(e) {
+    var term = e.target.closest('.hg-term');
+    if (term) activateTerm(term);
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var term = e.target.closest('.hg-term');
+    if (!term) return;
+    e.preventDefault();
+    activateTerm(term);
+  });
 })();
 </script>
 </body>

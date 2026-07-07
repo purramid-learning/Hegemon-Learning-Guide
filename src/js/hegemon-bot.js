@@ -1,4 +1,20 @@
 /*
+ * Copyright 2026 Joseph L. Selby, Purramid Learning®, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
  * hegemon-bot.js — Hegemon Learning Guide
  *
  * Slide-in scaffolding panel. Calls the Firebase Cloud Function proxy,
@@ -46,6 +62,98 @@
   var introShown = false;
   var currentTaskType = null;
 
+  /* ---- focus diagnostic options (per topic) ---- */
+  var FOCUS_OPTIONS = {
+    'number-line': [
+      "I’m not sure what a number line is",
+      "I know what it is but don’t see how it connects to the grid",
+      "Something else",
+      "In my own words…"
+    ],
+    'coordinate-plane': [
+      "I don’t understand what a coordinate plane is",
+      "I know what it is but I’m not sure how to use it",
+      "I keep confusing it with just a number line",
+      "Something else",
+      "In my own words…"
+    ],
+    'axes': [
+      "I’m not sure what axes means",
+      "I keep mixing up the x-axis and y-axis",
+      "I understand them separately but not how they work together",
+      "Something else",
+      "In my own words…"
+    ],
+    'origin': [
+      "I’m not sure what the origin is",
+      "I understand it but keep losing track of it on the grid",
+      "I’m mixing it up with just the number zero",
+      "Something else",
+      "In my own words…"
+    ],
+    'quadrants': [
+      "I don’t know what quadrants are",
+      "I understand the concept but can’t keep track of which is which",
+      "I’m confused about why they’re numbered the way they are",
+      "Something else",
+      "In my own words…"
+    ],
+    'ordered-pair': [
+      "I don’t know what an ordered pair is",
+      "I keep mixing up which number goes first",
+      "I understand it but have trouble plotting the point",
+      "Something else",
+      "In my own words…"
+    ],
+    'coordinates': [
+      "I’m not sure what coordinates means",
+      "I know the word but don’t know how to find them on the grid",
+      "I keep mixing up the x-coordinate and y-coordinate",
+      "Something else",
+      "In my own words…"
+    ],
+    'reading-coordinates': [
+      "I don’t know how to read a point’s coordinates from the grid",
+      "I can plot points but can’t read them in reverse",
+      "I keep getting x and y switched when reading",
+      "Something else",
+      "In my own words…"
+    ],
+    'zero-coordinate': [
+      "I’m not sure what it means when a coordinate is zero",
+      "I know it’s on an axis but can’t tell which one",
+      "Something else",
+      "In my own words…"
+    ],
+    'order-matters': [
+      "I don’t understand why the order of the numbers matters",
+      "I keep forgetting which number to write first",
+      "Something else",
+      "In my own words…"
+    ]
+  };
+
+  /* ---- topic display names (manual diagnostic list) ---- */
+  var TOPIC_DISPLAY = {
+    'number-line':            'Number line',
+    'coordinate-plane':       'Coordinate plane',
+    'x-axis':                 'The x-axis',
+    'y-axis':                 'The y-axis',
+    'axes':                   'Axes (x-axis and y-axis)',
+    'origin':                 'The origin',
+    'quadrants':              'Quadrants',
+    'sign-to-quadrant':       'Which signs belong in each quadrant',
+    'quadrant-numbering':     'How quadrants are numbered',
+    'ordered-pair':           'Ordered pair',
+    'coordinates':            'Coordinates',
+    'plotting-across-then-up':'Plotting: move across, then up or down',
+    'negative-x':             'Negative x-coordinates',
+    'negative-y':             'Negative y-coordinates',
+    'reading-coordinates':    'Reading coordinates from the grid',
+    'zero-coordinate':        'Zero coordinates',
+    'order-matters':          'Why order matters'
+  };
+
   /* ---- CSS ---- */
   var STYLES = [
     '.hg-panel{position:fixed;top:0;right:0;bottom:0;width:380px;max-width:100vw;',
@@ -85,6 +193,9 @@
     '.hg-sep{text-align:center;font-size:.75rem;color:var(--ink-soft,#54647a);',
     'margin:4px 0;display:flex;align-items:center;gap:8px;font-weight:600;align-self:stretch}',
     '.hg-sep::before,.hg-sep::after{content:"";flex:1;border-top:1px solid var(--line,#e6edf4)}',
+    '.hg-closed-note{text-align:center;font-size:.75rem;color:var(--ink-soft,#54647a);',
+    'font-style:italic;margin:8px 0;padding:6px 0;align-self:stretch;',
+    'border-top:1px solid var(--line,#e6edf4);border-bottom:1px solid var(--line,#e6edf4)}',
     '.hg-loading-label{margin-right:3px}',
     '.hg-dot{width:6px;height:6px;border-radius:50%;background:var(--ink-soft,#9fb2c9);',
     'animation:hg-blink 1.4s infinite both}',
@@ -117,12 +228,26 @@
     '.hg-btn-grid-submit:hover:not(:disabled){background:#2258c8;transform:translateY(-1px)}',
     '.hg-btn-grid-submit:disabled{opacity:.4;cursor:default;transform:none}',
     '.hg-btn-grid-submit:focus-visible{outline:2px solid #1a3f8f;outline-offset:2px}',
+    '.hg-btn-retry{font-family:var(--font-display,"Space Grotesk",sans-serif);font-weight:700;',
+    'font-size:.9rem;padding:9px 18px;border:none;border-radius:9px;align-self:flex-start;',
+    'background:var(--focus,#2f6df0);color:#fff;cursor:pointer;',
+    'transition:background .15s,transform .12s;margin-top:6px}',
+    '.hg-btn-retry:hover{background:#2258c8;transform:translateY(-1px)}',
 
     '.hg-trigger{position:fixed;bottom:28px;right:28px;width:52px;height:52px;',
     'border:none;padding:0;background:none;cursor:pointer;',
     'transition:transform .12s;z-index:99}',
     '.hg-trigger:hover{transform:scale(1.06)}',
     '.hg-trigger:focus-visible{outline:3px solid var(--focus,#2f6df0);outline-offset:3px;border-radius:50%}',
+
+    '.hg-choices{display:flex;flex-direction:column;gap:6px;align-self:stretch;margin:4px 0}',
+    '.hg-choice{font-family:var(--font-body,system-ui,sans-serif);font-size:.85rem;text-align:left;',
+    'padding:9px 13px;border:1.5px solid #c8d4e0;border-radius:10px;',
+    'background:#dde6ef;color:var(--ink,#16263d);cursor:pointer;',
+    'transition:border-color .12s,background .12s}',
+    '.hg-choice:hover{border-color:var(--focus,#2f6df0);background:#ccd8e4}',
+    '.hg-choice:focus-visible{outline:2px solid var(--focus,#2f6df0);outline-offset:2px}',
+    '.hg-choice--alt{border-style:dashed}',
 
     '@media(max-width:480px){.hg-panel{width:100vw;border-left:none}',
     '.hg-trigger{bottom:18px;right:18px}}'
@@ -198,10 +323,12 @@
     footer.appendChild(inputRow);
     panelEl.appendChild(footer);
     document.body.appendChild(panelEl);
+    panelEl.inert = true;
 
     triggerBtn = document.createElement('button');
     triggerBtn.className = 'hg-trigger';
-    triggerBtn.setAttribute('aria-label', 'Ask Hegemon for help');
+    triggerBtn.setAttribute('aria-label', 'Ask Hegemon for help (Alt+H)');
+    triggerBtn.setAttribute('aria-keyshortcuts', 'Alt+h');
     var triggerImg = document.createElement('img');
     triggerImg.src = 'images/hegemon-trigger.png';
     triggerImg.alt = '';
@@ -209,15 +336,41 @@
     triggerImg.height = 52;
     triggerBtn.appendChild(triggerImg);
     triggerBtn.addEventListener('click', function () {
-      if (open) {
-        hidePanel();
-      } else if (hasConversation) {
-        showPanel(); // reopen with transcript intact, no re-fetch
-      } else {
-        openManual();
-      }
+      togglePanel(false);
     });
     document.body.appendChild(triggerBtn);
+
+    document.addEventListener('keydown', function (e) {
+      if (e.altKey && (e.key === 'h' || e.key === 'H')) {
+        e.preventDefault();
+        togglePanel(true);
+      }
+    });
+  }
+
+  function appendClosedNote() {
+    var note = document.createElement('div');
+    note.className = 'hg-closed-note';
+    note.textContent = 'Session closed by student.';
+    transcriptEl.appendChild(note);
+    transcriptEl.scrollTop = transcriptEl.scrollHeight;
+  }
+
+  function togglePanel(viaKeyboard) {
+    if (open) {
+      if (hasConversation) {
+        appendClosedNote();
+        if (currentTaskType) document.dispatchEvent(new CustomEvent('hegemon:retry'));
+        resetConversation();
+      } else {
+        hidePanel();
+      }
+      triggerBtn.focus();
+    } else if (hasConversation) {
+      showPanel();
+    } else {
+      openManual(viaKeyboard);
+    }
   }
 
   /* ---- panel open / hide / reset ----
@@ -227,19 +380,27 @@
        student advances to a new target via the public reset() call. */
   function showPanel() {
     open = true;
+    panelEl.inert = false;
     panelEl.classList.add('hg-panel--open');
-    if (!inputEl.disabled) inputEl.focus();
+    if (!inputEl.disabled) {
+      inputEl.focus();
+    } else {
+      var firstChoice = panelEl.querySelector('.hg-choice');
+      if (firstChoice) firstChoice.focus();
+    }
   }
 
   function hidePanel() {
     open = false;
     panelEl.classList.remove('hg-panel--open');
+    panelEl.inert = true;
     document.dispatchEvent(new CustomEvent('hegemon:closed'));
   }
 
   function resetConversation() {
     open = false;
     panelEl.classList.remove('hg-panel--open');
+    panelEl.inert = true;
     // Transcript is preserved intentionally — student can reopen the panel to review
     // what happened. openWithParams() clears it when a new misconception session starts.
     actionsEl.innerHTML = '';
@@ -275,6 +436,42 @@
   function hideRetryButton() {
     var btn = actionsEl.querySelector('.hg-btn-retry');
     if (btn) btn.remove();
+  }
+
+  function showRetryButton() {
+    hideRetryButton();
+    var btn = document.createElement('button');
+    btn.className = 'hg-btn-retry';
+    btn.textContent = 'Try it again';
+    btn.addEventListener('click', function() {
+      document.dispatchEvent(new CustomEvent('hegemon:retry'));
+      resetConversation();
+    });
+    actionsEl.appendChild(btn);
+  }
+
+  function showChoiceButtons(choices) {
+    var wrap = document.createElement('div');
+    wrap.className = 'hg-choices hg-dynamic-choices';
+    choices.forEach(function(label) {
+      var btn = document.createElement('button');
+      btn.className = 'hg-choice';
+      btn.textContent = label;
+      btn.addEventListener('click', function() {
+        wrap.remove();
+        var isOwnWords = /in my own words/i.test(label);
+        if (isOwnWords) {
+          setInputEnabled(true);
+        } else {
+          conversationHistory.push({ role: 'user', content: label });
+          appendMessage(label, 'user');
+          fetchResponse(null);
+        }
+      });
+      wrap.appendChild(btn);
+    });
+    actionsEl.appendChild(wrap);
+    setInputEnabled(false);
   }
 
   function appendGridSubAnswer(text) {
@@ -337,7 +534,10 @@
       .then(function (r) { return r.json(); })
       .then(function (data) {
         loadingEl.remove();
+        var prevChoices = actionsEl.querySelector('.hg-dynamic-choices');
+        if (prevChoices) prevChoices.remove();
         if (!data.response) {
+          console.error('Hegemon: no response field. Server returned:', data);
           appendMessage('Something went wrong. Please try again.', 'bot');
           setInputEnabled(true);
           return;
@@ -353,6 +553,11 @@
         } else if (data.nextQuestion) {
           setInputEnabled(false);
           document.dispatchEvent(new CustomEvent('hegemon:next-question'));
+        } else if (data.dismissed) {
+          setInputEnabled(false);
+          if (currentTaskType) showRetryButton();
+        } else if (data.choices && data.choices.length) {
+          showChoiceButtons(data.choices);
         } else if (data.gridPrompt) {
           gridPromptActive = true;
           pendingGridCoords = null;
@@ -438,14 +643,17 @@
     // Not displayed — Claude's first response is the student's first visible message.
     conversationHistory = [{ role: 'user', content: 'I need help with this one. I got it wrong but I\'m not sure why.' }];
     hasConversation = true;
-    introShown = true; // auto-trigger counts as Athena having been "present"
+    var isFirstTrigger = !introShown;
+    introShown = true;
     showPanel();
+    if (isFirstTrigger) {
+      appendMessage("Hi, I'm Athena! I'm here to help!", 'bot');
+    }
     fetchResponse(null, "Let's look at your work");
   }
 
-  function openManual() {
+  function openManual(viaKeyboard) {
     if (!introShown) {
-      // First time the student opens the panel this session, unprompted.
       introShown = true;
       hasConversation = true;
       conversationHistory = [];
@@ -454,12 +662,44 @@
       transcriptEl.innerHTML = '';
       actionsEl.innerHTML = '';
       showPanel();
-      appendMessage('Hi, I\'m Athena!', 'bot');
-      setInputEnabled(true);
+      if (viaKeyboard) {
+        appendMessage("Hi, I'm Athena! In the future, you can open this window at any time by pressing Alt+H. What can I help you with today?", 'bot');
+      } else {
+        appendMessage("Hi, I'm Athena! I'm here to help!", 'bot');
+        appendMessage('What can I help you with today?', 'bot');
+      }
+      var md = HegemonMarkers.readForManual();
+      var combined = md.visible.concat(md.above);
+      var displayCount = Math.min(4, Math.max(md.visible.length, Math.min(3, combined.length)));
+      var list = combined.slice(0, displayCount);
+      var pool = combined.slice(displayCount);
+      if (list.length > 0) {
+        setInputEnabled(false);
+        showManualChoices(list, pool);
+      } else {
+        setInputEnabled(true);
+      }
     } else if (!hasConversation) {
-      // Session ended (auto-advanced or reset) but transcript is preserved.
-      // Just show the panel so the student can review what happened.
+      // Previous session was closed — start fresh without repeating the greeting.
+      hasConversation = true;
+      conversationHistory = [];
+      escalated = false;
+      retryUsed = false;
+      actionsEl.innerHTML = '';
+      transcriptEl.innerHTML = '';
       showPanel();
+      appendMessage('What can I help you with today?', 'bot');
+      var md2 = HegemonMarkers.readForManual();
+      var combined2 = md2.visible.concat(md2.above);
+      var displayCount2 = Math.min(4, Math.max(md2.visible.length, Math.min(3, combined2.length)));
+      var list2 = combined2.slice(0, displayCount2);
+      var pool2 = combined2.slice(displayCount2);
+      if (list2.length > 0) {
+        setInputEnabled(false);
+        showManualChoices(list2, pool2);
+      } else {
+        setInputEnabled(true);
+      }
     } else {
       openWithParams({
         misconceptionCode: currentCode,
@@ -467,6 +707,143 @@
         markerContext: currentMarkerContext
       });
     }
+  }
+
+  function openWithFocus(displayTerm, focusTopic, markerCtx) {
+    if (hasConversation) resetConversation();
+    currentCode = null;
+    currentCoords = null;
+    currentMarkerContext = markerCtx || null;
+    currentTaskType = null;
+    escalated = false;
+    retryUsed = false;
+    actionsEl.innerHTML = '';
+    if (transcriptEl.children.length > 0) {
+      var sep = document.createElement('div');
+      sep.className = 'hg-sep';
+      sep.textContent = displayTerm;
+      transcriptEl.appendChild(sep);
+    }
+    conversationHistory = [];
+    hasConversation = true;
+    var isFirst = !introShown;
+    introShown = true;
+    showPanel();
+    if (isFirst) appendMessage("Hi, I'm Athena! I'm here to help!", 'bot');
+    appendMessage('It sounds like you need some help with ' + displayTerm + '. Where are you struggling?', 'bot');
+    showFocusChoices(displayTerm, focusTopic);
+    setInputEnabled(false);
+  }
+
+  // Roving tabindex for a .hg-choices card: only the first button is in the tab
+  // order; Up/Down arrows move focus within the group; Tab exits it entirely.
+  function applyRovingTabindex(card) {
+    var btns = Array.prototype.slice.call(card.querySelectorAll('.hg-choice'));
+    btns.forEach(function (btn, i) { btn.tabIndex = i === 0 ? 0 : -1; });
+    card.addEventListener('keydown', function (e) {
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      e.preventDefault();
+      var idx = btns.indexOf(document.activeElement);
+      if (idx === -1) return;
+      var next = e.key === 'ArrowDown'
+        ? (idx + 1) % btns.length
+        : (idx - 1 + btns.length) % btns.length;
+      btns.forEach(function (b) { b.tabIndex = -1; });
+      btns[next].tabIndex = 0;
+      btns[next].focus();
+    });
+  }
+
+  function showFocusChoices(displayTerm, focusTopic) {
+    var opts = FOCUS_OPTIONS[focusTopic] || [
+      "I'm not sure I understand it",
+      "I understand the idea but can't apply it",
+      "Something else",
+      "In my own words…"
+    ];
+    var card = document.createElement('div');
+    card.className = 'hg-choices';
+    opts.forEach(function (text) {
+      var isFallback = text === 'Something else';
+      var isManual = text.indexOf('In my own words') === 0;
+      var btn = document.createElement('button');
+      btn.className = 'hg-choice' + (isFallback || isManual ? ' hg-choice--alt' : '');
+      btn.textContent = text;
+      btn.addEventListener('click', function () {
+        card.remove();
+        if (isFallback) {
+          appendMessage(text, 'user');
+          appendMessage("That's okay — tell me what comes to mind and we'll work through it.", 'bot');
+          conversationHistory = [];
+          setInputEnabled(true);
+        } else if (isManual) {
+          appendMessage(text, 'user');
+          appendMessage('Go ahead — describe what\'s confusing you in your own words.', 'bot');
+          conversationHistory = [];
+          setInputEnabled(true);
+        } else {
+          appendMessage(text, 'user');
+          conversationHistory = [{ role: 'user', content: 'I need help with ' + displayTerm + '. ' + text }];
+          fetchResponse(null);
+        }
+      });
+      card.appendChild(btn);
+    });
+    applyRovingTabindex(card);
+    transcriptEl.appendChild(card);
+    transcriptEl.scrollTop = transcriptEl.scrollHeight;
+  }
+
+  // list: marker records to show as buttons (up to 4).
+  // pool: remaining records for "Something else" paging (3 at a time).
+  function showManualChoices(list, pool) {
+    var card = document.createElement('div');
+    card.className = 'hg-choices';
+
+    list.forEach(function (rec) {
+      var displayName = TOPIC_DISPLAY[rec.topic] || rec.topic;
+      var btn = document.createElement('button');
+      btn.className = 'hg-choice';
+      btn.textContent = displayName;
+      btn.addEventListener('click', function () {
+        card.remove();
+        currentMarkerContext = HegemonMarkers.read({ focus: rec.topic });
+        appendMessage(displayName, 'user');
+        appendMessage('It sounds like you need some help with ' + displayName + '. Where are you struggling?', 'bot');
+        showFocusChoices(displayName, rec.topic);
+      });
+      card.appendChild(btn);
+    });
+
+    if (pool.length > 0) {
+      var elseBtn = document.createElement('button');
+      elseBtn.className = 'hg-choice hg-choice--alt';
+      elseBtn.textContent = 'Something else';
+      elseBtn.addEventListener('click', function () {
+        card.remove();
+        appendMessage('Something else', 'user');
+        var nextList = pool.slice(0, 3);
+        var nextPool = pool.slice(3);
+        showManualChoices(nextList, nextPool);
+      });
+      card.appendChild(elseBtn);
+    }
+
+    var manualBtn = document.createElement('button');
+    manualBtn.className = 'hg-choice hg-choice--alt';
+    manualBtn.textContent = 'In my own words…';
+    manualBtn.addEventListener('click', function () {
+      card.remove();
+      appendMessage('In my own words…', 'user');
+      appendMessage('Tell me what’s on your mind.', 'bot');
+      conversationHistory = [];
+      setInputEnabled(true);
+    });
+    card.appendChild(manualBtn);
+
+    applyRovingTabindex(card);
+    transcriptEl.appendChild(card);
+    transcriptEl.scrollTop = transcriptEl.scrollHeight;
   }
 
   function notifyCorrect() {
@@ -545,6 +922,7 @@
     clearHistory: clearHistory,
     hasHistory: hasHistory,
     downloadChat: downloadChat,
+    openFocus: openWithFocus,
     isOpen: function () { return open; },
     notifyCorrect: notifyCorrect,
     notifyWrong: notifyWrong

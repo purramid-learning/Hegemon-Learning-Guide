@@ -1,4 +1,19 @@
 ﻿<!DOCTYPE html>
+<!--
+  Copyright 2026 Joseph L. Selby, Purramid Learning®, Inc.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -53,7 +68,15 @@
     color:#fff;
     border-bottom:3px solid var(--x);
   }
-  .masthead .wrap{padding-top:30px;padding-bottom:38px}
+  .masthead .wrap{padding-top:22px;padding-bottom:38px}
+  .back-link{
+    display:inline-flex;align-items:center;gap:6px;
+    font-family:var(--font-mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;
+    color:#9fb2c9;text-decoration:none;margin:0 0 20px;
+  }
+  .back-link:hover,.back-link:focus{color:#fff;outline:none}
+  .back-link:focus-visible{outline:2px solid var(--focus);outline-offset:3px;border-radius:3px}
+  .back-link svg{flex-shrink:0}
   .crumb{
     font-family:var(--font-mono);
     font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;
@@ -103,6 +126,7 @@
     width:100%;height:auto;max-width:404px;display:block;margin:0 auto;
     touch-action:manipulation;
   }
+  .plane-svg:focus{outline:none}
   .plane-svg:focus-visible{outline:3px solid var(--focus);outline-offset:4px;border-radius:8px}
 
   .grid-line{stroke:var(--grid);stroke-width:1}
@@ -167,19 +191,6 @@
   #nav-back{justify-self:start}
   #nav-next{justify-self:end}
 
-  /* ---------- emit readout (capture-only) ---------- */
-  .readout{
-    display:none;margin:20px 0 0;border:1px solid var(--line);
-    border-radius:12px;overflow:hidden;background:var(--paper);
-  }
-  .readout .rohead{
-    font-family:var(--font-mono);font-size:.68rem;letter-spacing:.12em;
-    text-transform:uppercase;color:var(--ink-soft);
-    padding:9px 16px;border-bottom:1px solid var(--line);background:var(--surface);
-  }
-  .readout .robody{padding:13px 16px;font-size:.95rem}
-  .readout .roline{font-family:var(--font-mono);font-size:.92rem}
-  .readout .rometa{color:var(--ink-soft);font-size:.85rem;margin:6px 0 0}
 
   /* ---------- done ---------- */
   .done{display:none;text-align:center;padding:14px 0 4px}
@@ -201,6 +212,12 @@
 
 <header class="masthead">
   <div class="wrap">
+    <a class="back-link" href="coordinate-plane-lesson.html">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+        <path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Lesson
+    </a>
     <p class="crumb">Math · The Coordinate Plane</p>
     <h1 class="title">Lesson 1 <span class="c-x">quiz</span></h1>
     <p class="lede">Plot each point and identify quadrants. Click to place, then Submit. You can go back and revise before finishing.</p>
@@ -231,14 +248,6 @@
         <button class="btn-nav" id="nav-next" aria-label="Skip to next question">Next &#9654;</button>
       </div>
 
-      <!-- capture-only emit; reveals what was recorded, never whether it was right -->
-      <div class="readout" id="readout" aria-live="polite">
-        <div class="rohead">Captured for detection</div>
-        <div class="robody">
-          <div class="roline" id="ro-coords"></div>
-          <p class="rometa">Saved to the submission log. Misconception detection runs downstream — not on this page.</p>
-        </div>
-      </div>
     </div>
 
     <!-- end state -->
@@ -333,8 +342,6 @@
   var btnSubmit = document.getElementById("submit");
   var btnBack   = document.getElementById("nav-back");
   var btnNext   = document.getElementById("nav-next");
-  var readout   = document.getElementById("readout");
-  var roCoords  = document.getElementById("ro-coords");
   var elTask    = document.getElementById("task");
   var elDone    = document.getElementById("done");
   var doneCount = document.getElementById("done-count");
@@ -546,7 +553,6 @@
     marker.style.opacity = 0;
     questionDot.style.opacity = 0;
     cursorRing.style.opacity = 0;
-    readout.style.display = "none";
     subAnswerMode = false;
     clearQuadrantSelection();
 
@@ -615,11 +621,6 @@
     window.hegemonSubmissions = submissions;
     console.log("[hegemon] plot submission", record);
 
-    roCoords.innerHTML =
-      "target <span class='pair'>(<span class='x'>"+fmt(record.targetX)+"</span>, <span class='y'>"+fmt(record.targetY)+"</span>)</span>" +
-      "&nbsp;&nbsp;·&nbsp;&nbsp;" +
-      "plotted <span class='pair'>(<span class='x'>"+fmt(record.plottedX)+"</span>, <span class='y'>"+fmt(record.plottedY)+"</span>)</span>";
-    readout.style.display = "block";
 
     var isCorrect = (record.plottedX===record.targetX && record.plottedY===record.targetY);
 
@@ -657,10 +658,6 @@
     window.hegemonSubmissions = submissions;
     console.log("[hegemon] quadrant submission", record);
 
-    roCoords.innerHTML =
-      "point <span class='pair'>(<span class='x'>"+fmt(q.x)+"</span>, <span class='y'>"+fmt(q.y)+"</span>)</span>" +
-      "&nbsp;&nbsp;·&nbsp;&nbsp;named: <strong>"+named+"</strong>";
-    readout.style.display = "block";
 
     var isCorrect = (named === q.correct);
 
@@ -758,9 +755,16 @@
   });
 
   /* When Hegemon resolves via chat ([NEXT_QUESTION]) rather than a re-submission,
-     advance() was never called from the submit button, so mark+advance here. */
+     mark as answered but do NOT save placed/selectedQuadrant — they reflect the
+     original wrong submission. On Back navigation this question shows no placed point,
+     which is accurate (the student never correctly placed one). */
   document.addEventListener('hegemon:next-question', function(){
-    if (!submittedIdxs[idx]) advance();
+    if (!submittedIdxs[idx]) {
+      submittedIdxs[idx] = true;
+      marker.style.opacity = 0;
+      clearQuadrantSelection();
+      if (findNextTarget(idx) === -1) { finish(); }
+    }
   });
 
   /* ---- Grid sub-answer mode (Hegemon [GRID_PROMPT]) ---- */
@@ -776,6 +780,23 @@
     marker.style.opacity = 0;
     svg.classList.remove('hg-submode');
     elStatus.textContent = 'Recorded.';
+  });
+
+  /* ---- Early dismissal retry (Hegemon panel closed mid-intervention) ---- */
+  document.addEventListener('hegemon:retry', function(){
+    locked = false;
+    svg.classList.remove('locked');
+    if (QUESTIONS[idx].type === 'plot') {
+      placed = null;
+      marker.style.opacity = 0;
+      btnSubmit.disabled = true;
+      elStatus.textContent = 'No point placed yet.';
+    } else {
+      selectedQuadrant = null;
+      clearQuadrantSelection();
+      btnSubmit.disabled = true;
+      elStatus.textContent = 'No quadrant selected yet.';
+    }
   });
 
   /* ---- Finish / restart ---- */

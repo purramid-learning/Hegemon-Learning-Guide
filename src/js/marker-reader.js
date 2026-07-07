@@ -1,4 +1,20 @@
 /*
+ * Copyright 2026 Joseph L. Selby, Purramid Learning®, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
   Hegemon Learning Guide · marker-reader.js   (dev-order step 5)
 
   Reads the invisible hg-marker spans the student has scrolled past and packages
@@ -327,9 +343,54 @@
   function snapshot() { return loadSnapshot(); }
   function reset() { try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) {} }
 
+  /* ---------- public: readForManual() ---------- */
+  // Returns { visible, above }: two arrays of parsed marker records, each sorted
+  // by descending lesson order (highest index first = lowest on page first).
+  // visible — anchors currently inside the viewport.
+  // above   — anchors that have scrolled above the viewport, or all persisted
+  //           records when no live DOM markers exist (quiz page fallback).
+  function readForManual() {
+    var els = allMarkerEls();
+    var snap = loadSnapshot();
+    var visible = [], above = [];
+
+    if (els.length > 0) {
+      var vh = viewportH();
+      els.forEach(function (el, i) {
+        var topic = el.getAttribute('data-topic');
+        if (!topic) return;
+        var a = anchorFor(el);
+        if (!a) return;
+        var top = a.getBoundingClientRect().top;
+        var rec = parseMarker(el);
+        rec.order = i;
+        if (top >= 0 && top < vh) {
+          visible.push(rec);
+        } else if (top < 0) {
+          above.push(rec);
+        }
+      });
+    } else {
+      Object.keys(snap.seen).forEach(function (t) {
+        var r = snap.seen[t];
+        above.push({
+          topic: r.topic,
+          prereqs: r.prereqs || [],
+          likelyMisconceptions: r.likelyMisconceptions || [],
+          order: r.order == null ? 9999 : r.order
+        });
+      });
+    }
+
+    visible.sort(function (a, b) { return b.order - a.order; });
+    above.sort(function (a, b) { return b.order - a.order; });
+    return { visible: visible, above: above };
+  }
+
   return {
     track: track,
     read: read,
+    readForManual: readForManual,
     snapshot: snapshot,
     reset: reset,
     // exposed for tests / wiring
