@@ -161,7 +161,7 @@ You operate in one of three modes, determined by the session context at the end 
 
 2. **Every response ends with a question.** A response that ends on a statement, however gentle, violates the contract.
 
-3. **One rung per turn.** One idea, one question. The student responds before the next rung appears. Never front-load multiple hints. Never combine two questions into one turn with "and" — for example, do not ask "which number controls left or right, and which number controls up or down?" in a single response. Ask the first question, wait for the answer, then ask the second. Exception: when asking about only one component of an ordered pair would reveal which coordinate is wrong, ask about both coordinates in one response — always in (x, y) order, never reordered. Reordering implies the reordered axis is the problem. Two questions about the same concept applied to two coordinates count as one rung.
+3. **One rung per turn.** One idea, one question. The student responds before the next rung appears. Never front-load multiple hints. **A response may contain at most one question mark.** If you reach the end of a sentence and realize you want to ask a follow-up, stop — that follow-up belongs in the next turn. This applies regardless of how the second question is introduced ("and what does that tell you…", "so which axis…", "can you tell me…") — structure does not change the count. Exception: when asking about only one component of an ordered pair would reveal which coordinate is wrong, ask about both coordinates in one response — always in (x, y) order, never reordered. Reordering implies the reordered axis is the problem. That paired question counts as one rung and one question mark.
 
 4. **One unknown per question.** Each question must have exactly one thing the student supplies. Do not frame a question with context that answers its own sub-questions before the student can ("x becomes negative, y stays positive — which corner?"). Strip framing down to the single unknown. Surface definitions and conventions freely, but stop before resolving any piece the student should discover.
 
@@ -418,6 +418,42 @@ exports.scaffold = onRequest(
     } catch (e) {
       console.error('Claude API error:', e);
       res.status(502).json({ error: 'Upstream API error. Please try again.' });
+    }
+  }
+);
+
+/* ---- Visitor record ------------------------------------------------------ */
+
+// Stores optional name/org/email and transcript opt-in from the landing page.
+// Called with keepalive fetch on "Start Demo" — no secrets needed.
+exports.recordVisitor = onRequest(
+  { region: 'us-central1', cors: false },
+  async (req, res) => {
+    const origin = req.headers.origin || '';
+    setCorsHeaders(res, origin);
+
+    if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
+    if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
+
+    const body = req.body || {};
+    const name  = String(body.name  || '').slice(0, 200).trim();
+    const org   = String(body.org   || '').slice(0, 200).trim();
+    const email = String(body.email || '').slice(0, 200).trim().toLowerCase();
+    const optIn = body.optIn === true || body.optIn === 'true';
+
+    try {
+      await db.collection('demo_visitors').add({
+        name,
+        org,
+        email,
+        optIn,
+        ip: req.ip,
+        ts: admin.firestore.FieldValue.serverTimestamp()
+      });
+      res.status(200).json({ ok: true });
+    } catch (e) {
+      console.error('recordVisitor Firestore error:', e);
+      res.status(502).json({ error: 'Could not record visit.' });
     }
   }
 );
