@@ -346,7 +346,7 @@
     <div class="card">
       <p class="card-label">What is Hegemon?</p>
       <h2>Targeted scaffolding, not generic hints</h2>
-      <p>Common AI tutors respond to wrong answers by restating the rule the student is already struggling with. Hegemon is different. It detects the specific type of error a student made—using a taxonomy of subject misconceptions—and scaffolds a Socratic dialogue bounded by that error.</p>
+      <p>Common AI tutors respond to wrong answers by restating the rule the student is already struggling with. Hegemon is different. It detects the specific type of error a student made—using a taxonomy of subject misconceptions—and scaffolds a Socratic dialogue limited to that topic.</p>
       <p>This demo shows the full interaction loop: a short reading lesson, a ten-question quiz (coordinate plotting and quadrant identification), and live Hegemon responses whenever the student's answer reveals a detectable misconception.</p>
       <p><i>Note: None of the Hegemon Learning Guide responses in this demo are hard-coded. All output represents the actual behavior of the AI as bounded by relevant subject pedagogy.</i></p>
     </div>
@@ -433,7 +433,7 @@
 
 <script>
   (function () {
-    var VISITOR_URL = 'https://us-central1-hegemon-learning-guide.cloudfunctions.net/recordVisitor';
+    var VISITOR_URL    = 'https://us-central1-hegemon-learning-guide.cloudfunctions.net/recordVisitor';
 
     var fields = {
       name:  document.getElementById('demo-name'),
@@ -442,6 +442,21 @@
     };
     var optIn = document.getElementById('transcript-opt-in');
     var startBtn = document.getElementById('start-btn');
+
+    // Generate a session ID once per session and persist it so downstream
+    // pages can attach transcripts to this visitor record.
+    function getOrCreateSessionId() {
+      try {
+        var existing = sessionStorage.getItem('hg_session_id');
+        if (existing) return existing;
+        var arr = new Uint8Array(24);
+        crypto.getRandomValues(arr);
+        var id = Array.from(arr).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+        sessionStorage.setItem('hg_session_id', id);
+        return id;
+      } catch (e) { return ''; }
+    }
+    var sessionId = getOrCreateSessionId();
 
     // Restore any values the user already typed (page refresh)
     try {
@@ -470,14 +485,17 @@
     // request completes even though the page navigates away immediately).
     startBtn.addEventListener('click', function () {
       save();
+      try { sessionStorage.removeItem('hg_transcript_log'); } catch (e) {}
+      try { sessionStorage.removeItem('hg_transcript_html_log'); } catch (e) {}
       fetch(VISITOR_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name:  fields.name.value.trim(),
-          org:   fields.org.value.trim(),
-          email: fields.email.value.trim(),
-          optIn: optIn.checked
+          sessionId: sessionId,
+          name:      fields.name.value.trim(),
+          org:       fields.org.value.trim(),
+          email:     fields.email.value.trim(),
+          optIn:     optIn.checked
         }),
         keepalive: true
       }).catch(function () {});
