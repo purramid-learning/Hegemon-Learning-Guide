@@ -47,6 +47,7 @@
 
   /* ---- state ---- */
   var functionUrl = '';
+  var source = '';
   var panelEl, transcriptEl, inputEl, sendBtn, actionsEl, triggerBtn;
   var conversationHistory = [];
   var currentCode = null;
@@ -61,6 +62,7 @@
   var gridSubmitBtn = null;
   var introShown = false;
   var currentTaskType = null;
+  var transcriptArchived = false;
 
   /* ---- focus diagnostic options (per topic) ---- */
   var FOCUS_OPTIONS = {
@@ -397,7 +399,38 @@
     document.dispatchEvent(new CustomEvent('hegemon:closed'));
   }
 
+  /* Append the completed conversation to the session-level transcript logs in
+     sessionStorage so the quiz finish() can submit the full cross-page log and
+     downloadChat() can include lesson conversations. */
+  function archiveConversationToSession() {
+    if (transcriptArchived || conversationHistory.length < 2) return;
+    try {
+      // Always save rendered HTML for download — independent of opt-in.
+      var htmlLog = [];
+      try { htmlLog = JSON.parse(sessionStorage.getItem('hg_transcript_html_log') || '[]'); } catch (e) { htmlLog = []; }
+      htmlLog.push({ source: source, html: transcriptEl.innerHTML });
+      sessionStorage.setItem('hg_transcript_html_log', JSON.stringify(htmlLog));
+
+      // Save raw conversation for Firebase only when the user opted in.
+      if (sessionStorage.getItem('hg_demo_opt_in') === 'true') {
+        var log = [];
+        try { log = JSON.parse(sessionStorage.getItem('hg_transcript_log') || '[]'); } catch (e) { log = []; }
+        log.push({
+          source: source,
+          misconceptionCode: currentCode || null,
+          coords: currentCoords || null,
+          conversationHistory: conversationHistory,
+          ts: new Date().toISOString()
+        });
+        sessionStorage.setItem('hg_transcript_log', JSON.stringify(log));
+      }
+
+      transcriptArchived = true;
+    } catch (e) {}
+  }
+
   function resetConversation() {
+    archiveConversationToSession();
     open = false;
     panelEl.classList.remove('hg-panel--open');
     panelEl.inert = true;
@@ -413,6 +446,7 @@
     gridPromptActive = false;
     pendingGridCoords = null;
     currentTaskType = null;
+    transcriptArchived = false;
     hideGridSubmitButton();
     document.dispatchEvent(new CustomEvent('hegemon:grid-done'));
   }
@@ -446,6 +480,17 @@
     btn.addEventListener('click', function() {
       document.dispatchEvent(new CustomEvent('hegemon:retry'));
       resetConversation();
+    });
+    actionsEl.appendChild(btn);
+  }
+
+  function showAskAnotherButton() {
+    var btn = document.createElement('button');
+    btn.className = 'hg-btn-retry';
+    btn.textContent = 'Ask about something else';
+    btn.addEventListener('click', function() {
+      resetConversation();
+      openManual(false);
     });
     actionsEl.appendChild(btn);
   }
@@ -523,6 +568,8 @@
       body.targetY  = currentCoords.targetY;
       body.plottedX = currentCoords.plottedX;
       body.plottedY = currentCoords.plottedY;
+      if (currentCoords.namedQuadrant != null) body.namedQuadrant = currentCoords.namedQuadrant;
+      if (currentCoords.correctQuadrant != null) body.correctQuadrant = currentCoords.correctQuadrant;
     }
     if (currentTaskType) body.taskType = currentTaskType;
 
@@ -555,7 +602,11 @@
           document.dispatchEvent(new CustomEvent('hegemon:next-question'));
         } else if (data.dismissed) {
           setInputEnabled(false);
-          if (currentTaskType) showRetryButton();
+          if (currentTaskType) {
+            showRetryButton();
+          } else {
+            showAskAnotherButton();
+          }
         } else if (data.choices && data.choices.length) {
           showChoiceButtons(data.choices);
         } else if (data.gridPrompt) {
@@ -616,6 +667,7 @@
   /* ---- public API ---- */
   function init(config) {
     functionUrl = config.functionUrl || '';
+    source      = config.source      || '';
     buildDOM();
     document.addEventListener('hegemon:grid-placed', function(e) {
       if (!gridPromptActive) return;
@@ -881,11 +933,29 @@
   }
 
   function hasHistory() {
-    return transcriptEl.children.length > 0;
+    if (transcriptEl.children.length > 0) return true;
+    try { return JSON.parse(sessionStorage.getItem('hg_transcript_html_log') || '[]').length > 0; } catch (e) { return false; }
   }
 
   function downloadChat() {
-    if (!transcriptEl.children.length) return;
+    // Gather archived conversations from sessionStorage (lesson + earlier quiz sessions).
+    var archivedHtml = '';
+    try {
+      var htmlLog = JSON.parse(sessionStorage.getItem('hg_transcript_html_log') || '[]');
+      htmlLog.forEach(function(entry) {
+        var label = entry.source === 'lesson' ? 'Lesson' : 'Quiz';
+        archivedHtml += '<div class="page-sep">' + label + '</div><div class="wrap">' + entry.html + '</div>';
+      });
+    } catch (e) {}
+
+    // Current page's live transcript (last quiz conversation, not yet archived).
+    var currentHtml = transcriptEl.innerHTML
+      ? '<div class="page-sep">Quiz</div><div class="wrap">' + transcriptEl.innerHTML + '</div>'
+      : '';
+
+    var body = archivedHtml + currentHtml;
+    if (!body) return;
+
     var win = window.open('', '_blank');
     if (!win) return;
     var html = '<!DOCTYPE html><html><head>' +
@@ -893,25 +963,26 @@
       '<title>Hegemon Chat History</title>' +
       '<style>' +
       'body{font-family:"Space Grotesk",system-ui,sans-serif;max-width:600px;margin:40px auto;color:#16263d;padding:0 20px}' +
-      'h1{font-size:1rem;color:#54647a;margin-bottom:24px;font-weight:600}' +
-      '.wrap{display:flex;flex-direction:column;gap:12px}' +
+      'h1{font-size:1.1rem;color:#54647a;margin:0 0 24px;font-weight:600}' +
+      '.page-sep{font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#54647a;border-bottom:2px solid #e6edf4;padding-bottom:6px;margin:28px 0 14px}' +
+      '.wrap{display:flex;flex-direction:column;gap:12px;margin-bottom:8px}' +
       '.hg-msg{max-width:85%;padding:10px 14px;border-radius:12px;font-size:.9rem;line-height:1.6;white-space:pre-wrap;word-break:break-word}' +
       '.hg-msg--bot,.hg-msg--success{background:#f6f9fc;border:1px solid #e6edf4}' +
       '.hg-msg--user{background:#16263d;color:#fff;margin-left:auto;text-align:right}' +
       '.hg-msg--escalate{background:#fff8e6;border:1px solid #f5d87a}' +
-      '.hg-msg--loading,.hg-msg--action{display:none}' +
+      '.hg-msg--loading,.hg-msg--action,.hg-closed-note{display:none}' +
       '.hg-sep{text-align:center;font-size:.75rem;color:#54647a;margin:12px 0 4px;display:flex;align-items:center;gap:8px;font-weight:600}' +
       '.hg-sep::before,.hg-sep::after{content:"";flex:1;border-top:1px solid #e6edf4}' +
       '@media print{body{margin:20px;padding:0 10px}}' +
       '</style>' +
       '</head><body>' +
-      '<h1>Hegemon Chat — Lesson 1 Quiz</h1>' +
-      '<div class="wrap">' + transcriptEl.innerHTML + '</div>' +
+      '<h1>Hegemon Chat — Lesson 1</h1>' +
+      body +
+      '<p style="margin-top:32px;font-size:.75rem;color:#54647a">Use your browser\'s File &gt; Print &gt; Save as PDF to save a copy.</p>' +
       '</body></html>';
     win.document.write(html);
     win.document.close();
     win.focus();
-    setTimeout(function() { win.print(); }, 400);
   }
 
   return {

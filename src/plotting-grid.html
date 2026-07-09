@@ -372,7 +372,8 @@
 
   /* ---- bot init ---- */
   HegemonBot.init({
-    functionUrl: 'https://us-central1-hegemon-learning-guide.cloudfunctions.net/scaffold'
+    functionUrl: 'https://us-central1-hegemon-learning-guide.cloudfunctions.net/scaffold',
+    source: 'quiz'
   });
 
   /* ---- build the static grid once ---- */
@@ -529,8 +530,10 @@
      Navigation helpers
   ---------------------------------------------------------------- */
   function findNextTarget(fromIdx){
-    if (fromIdx + 1 < QUESTIONS.length) return fromIdx + 1;
-    for (var i = 0; i < QUESTIONS.length; i++){
+    for (var i = fromIdx + 1; i < QUESTIONS.length; i++){
+      if (!submittedIdxs[i]) return i;
+    }
+    for (var i = 0; i < fromIdx; i++){
       if (!submittedIdxs[i]) return i;
     }
     return -1;
@@ -673,12 +676,12 @@
       if (!mcTriggered[group] && !mcCountedAtIdx[idx]){
         mcCountedAtIdx[idx] = group;
         mcErrorCount[group] = (mcErrorCount[group] || 0) + 1;
-        if (mcErrorCount[group] >= 2){
+        if (mcErrorCount[group] >= 1){
           mcTriggered[group] = true;
           currentTriggeredGroup = group;
           HegemonBot.open({
             misconceptionCode: code,
-            coords: { targetX:q.x, targetY:q.y },
+            coords: { targetX:q.x, targetY:q.y, namedQuadrant:named, correctQuadrant:q.correct },
             markerContext: HegemonMarkers.snapshot(),
             taskType: "quadrant",
             questionLabel: 'Question ' + (idx + 1)
@@ -761,7 +764,9 @@
   document.addEventListener('hegemon:next-question', function(){
     if (!submittedIdxs[idx]) {
       submittedIdxs[idx] = true;
+      placed = null;
       marker.style.opacity = 0;
+      selectedQuadrant = null;
       clearQuadrantSelection();
       if (findNextTarget(idx) === -1) { finish(); }
     }
@@ -800,7 +805,24 @@
   });
 
   /* ---- Finish / restart ---- */
+  function submitTranscriptLog() {
+    try {
+      if (sessionStorage.getItem('hg_demo_opt_in') !== 'true') return;
+      var sessionId = sessionStorage.getItem('hg_session_id') || '';
+      if (!sessionId) return;
+      var log = JSON.parse(sessionStorage.getItem('hg_transcript_log') || '[]');
+      if (!log.length) return;
+      fetch('https://us-central1-hegemon-learning-guide.cloudfunctions.net/submitTranscript', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: sessionId, transcriptLog: log }),
+        keepalive: true
+      }).catch(function() {});
+    } catch (e) {}
+  }
+
   function finish(){
+    submitTranscriptLog();
     elTask.style.display = "none";
     doneCount.textContent = submissions.length + " of " + QUESTIONS.length + " questions recorded.";
     btnDownloadChat.style.display = HegemonBot.hasHistory() ? "inline-block" : "none";

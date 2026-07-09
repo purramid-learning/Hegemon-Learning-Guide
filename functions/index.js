@@ -116,6 +116,15 @@ function validate(body) {
   }
   const isQuadrantTask = body.taskType === 'quadrant';
 
+  // Quadrant label fields: optional, must be Roman numeral I–IV if present
+  const VALID_Q = new Set(['I', 'II', 'III', 'IV']);
+  if (body.namedQuadrant != null && !VALID_Q.has(body.namedQuadrant)) {
+    return 'namedQuadrant must be I, II, III, or IV, or omitted';
+  }
+  if (body.correctQuadrant != null && !VALID_Q.has(body.correctQuadrant)) {
+    return 'correctQuadrant must be I, II, III, or IV, or omitted';
+  }
+
   // Coordinate fields: optional. Quadrant tasks only need targetX/Y; plot tasks need all four.
   const { targetX, targetY, plottedX, plottedY } = body;
   if (isQuadrantTask) {
@@ -161,9 +170,9 @@ You operate in one of three modes, determined by the session context at the end 
 
 2. **Every response ends with a question.** A response that ends on a statement, however gentle, violates the contract.
 
-3. **One rung per turn.** One idea, one question. The student responds before the next rung appears. Never front-load multiple hints. **A response may contain at most one question mark.** If you reach the end of a sentence and realize you want to ask a follow-up, stop — that follow-up belongs in the next turn. This applies regardless of how the second question is introduced ("and what does that tell you…", "so which axis…", "can you tell me…") — structure does not change the count. Exception: when asking about only one component of an ordered pair would reveal which coordinate is wrong, ask about both coordinates in one response — always in (x, y) order, never reordered. Reordering implies the reordered axis is the problem. That paired question counts as one rung and one question mark.
+3. **One rung per turn.** One idea, one question. The student responds before the next rung appears. Never front-load multiple hints. **A response may contain at most one question mark.** If you reach the end of a sentence and realize you want to ask a follow-up, stop — that follow-up belongs in the next turn. This applies regardless of how the second question is introduced ("and what does that tell you…", "so which axis…", "can you tell me…") — structure does not change the count. Exception: when asking about only one component of an ordered pair would reveal which coordinate is wrong, ask about both coordinates in one response — always in (x, y) order, never reordered. Reordering implies the reordered axis is the problem. That paired question counts as one rung and one question mark. **This exception applies only in assessment mode (a task ordered pair is present in the session context). It never applies in comprehension support mode.**
 
-4. **One unknown per question.** Each question must have exactly one thing the student supplies. Do not frame a question with context that answers its own sub-questions before the student can ("x becomes negative, y stays positive — which corner?"). Strip framing down to the single unknown. Surface definitions and conventions freely, but stop before resolving any piece the student should discover.
+4. **One unknown per question.** Each question must have exactly one thing the student supplies. Do not frame a question with context that answers its own sub-questions before the student can ("x becomes negative, y stays positive — which corner?"). Strip framing down to the single unknown. Surface definitions and conventions freely, but stop before resolving any piece the student should discover. **Explicit violation: "Which axis runs left to right, and which runs up and down?" — one question mark, two unknowns. Ask one ("Which axis runs left to right?"), wait for the answer, then ask the other.**
 
 5. **Stop early.** The moment the student can carry it, hand off. The failure mode is ten minutes of step-by-step narration the student extracts instead of two minutes of thinking.
 
@@ -175,7 +184,9 @@ You operate in one of three modes, determined by the session context at the end 
 
 9. **Charitable interpretation.** If student input is ambiguous, do not guess which interpretation and proceed. Instead: write a brief lead-in sentence, then output the token [CHOICES] on its own line, followed immediately by a numbered list of 3–4 interpretations, always ending with "In my own words..." as the last option. The system will render the numbered items as clickable buttons. Then stop and wait for their selection before proceeding. Only use [CHOICES] for charitable interpretation — do not use numbered lists anywhere else in your responses.
 
-10. **Zero-coordinate direction is always correct.** When a coordinate value is 0, any directional qualifier is vacuously true: "0 up" and "0 down" are equally correct for y = 0; "0 left" and "0 right" are equally correct for x = 0. Do not redirect the student. This matters especially when your own previous question framed the choice as "up or down" or "left or right" — the student answered in the terms you provided and is correct.
+10. **No physical interaction instructions.** Never ask the student to point to, trace, circle, draw on, or physically interact with a grid, axis, or plane. The chat window has no visible grid. The only way to direct a student to interact with a grid is the [GRID_PROMPT] token, which is only valid in assessment mode. All guidance must be expressible in words alone.
+
+11. **Zero-coordinate direction is always correct.** When a coordinate value is 0, any directional qualifier is vacuously true: "0 up" and "0 down" are equally correct for y = 0; "0 left" and "0 right" are equally correct for x = 0. Do not redirect the student. This matters especially when your own previous question framed the choice as "up or down" or "left or right" — the student answered in the terms you provided and is correct.
 
 ## What you may and may not surface
 
@@ -260,12 +271,16 @@ When [GRID_PROMPT] is used and the student's grid submission (shown in the conve
 - In comprehension support mode or unclassified fallback (no misconception code in the session context), do not use [NEXT_QUESTION]. There is no Next button. When understanding is reached, close with: "Let me know if there is anything else I can help with."
 `;
 
-function buildSystemPrompt(misconceptionCode, markerContext, coords, taskType) {
+function buildSystemPrompt(misconceptionCode, markerContext, coords, taskType, namedQuadrant, correctQuadrant) {
   const lines = [SCAFFOLDING_RULES, '', '---', '', '[SESSION CONTEXT]'];
 
   if (taskType === 'quadrant' && coords) {
     lines.push('Task: student was asked to identify the quadrant containing (' + coords.targetX + ', ' + coords.targetY + ')');
-    lines.push('Student named an incorrect quadrant.');
+    if (namedQuadrant && correctQuadrant) {
+      lines.push('Student named Quadrant ' + namedQuadrant + '. Correct answer: Quadrant ' + correctQuadrant + '.');
+    } else {
+      lines.push('Student named an incorrect quadrant.');
+    }
   } else if (coords) {
     lines.push('Task: student was asked to plot (' + coords.targetX + ', ' + coords.targetY + ')');
     lines.push('Student plotted: (' + coords.plottedX + ', ' + coords.plottedY + ')');
@@ -355,7 +370,9 @@ exports.scaffold = onRequest(
       targetX = null,
       targetY = null,
       plottedX = null,
-      plottedY = null
+      plottedY = null,
+      namedQuadrant = null,
+      correctQuadrant = null
     } = req.body;
 
     let coords = null;
@@ -368,7 +385,7 @@ exports.scaffold = onRequest(
     // Call Claude
     try {
       const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
-      const systemPrompt = buildSystemPrompt(misconceptionCode, markerContext, coords, taskType);
+      const systemPrompt = buildSystemPrompt(misconceptionCode, markerContext, coords, taskType, namedQuadrant, correctQuadrant);
       const messages = conversationHistory.map(function (msg) {
         return { role: msg.role, content: msg.content };
       });
@@ -441,8 +458,13 @@ exports.recordVisitor = onRequest(
     const email = String(body.email || '').slice(0, 200).trim().toLowerCase();
     const optIn = body.optIn === true || body.optIn === 'true';
 
+    const sessionId = String(body.sessionId || '').replace(/[^a-f0-9]/g, '').slice(0, 48);
+
     try {
-      await db.collection('demo_visitors').add({
+      const ref = sessionId
+        ? db.collection('demo_visitors').doc(sessionId)
+        : db.collection('demo_visitors').doc();
+      await ref.set({
         name,
         org,
         email,
@@ -450,10 +472,100 @@ exports.recordVisitor = onRequest(
         ip: req.ip,
         ts: admin.firestore.FieldValue.serverTimestamp()
       });
+
+      await db.collection('mail').add({
+        to: 'josephlselby@gmail.com',
+        message: {
+          subject: 'Hegemon demo started' + (name ? ': ' + name : ''),
+          text: [
+            'A visitor started the Hegemon demo.',
+            '',
+            'Name:       ' + (name  || '(not provided)'),
+            'Org:        ' + (org   || '(not provided)'),
+            'Email:      ' + (email || '(not provided)'),
+            'Transcript: ' + (optIn ? 'Yes' : 'No'),
+            'Session ID: ' + (sessionId || '(none)')
+          ].join('\n')
+        }
+      });
+
       res.status(200).json({ ok: true });
     } catch (e) {
       console.error('recordVisitor Firestore error:', e);
       res.status(502).json({ error: 'Could not record visit.' });
+    }
+  }
+);
+
+/* ---- transcript submission ----------------------------------------------- */
+
+exports.submitTranscript = onRequest(
+  { region: 'us-central1', cors: false },
+  async (req, res) => {
+    const origin = req.headers.origin || '';
+    setCorsHeaders(res, origin);
+
+    if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
+    if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
+
+    const body = req.body || {};
+    const sessionId = String(body.sessionId || '').replace(/[^a-f0-9]/g, '').slice(0, 48);
+    if (!sessionId) { return res.status(400).json({ error: 'sessionId required' }); }
+
+    // transcriptLog: array of conversation objects from both lesson and quiz pages.
+    const log = body.transcriptLog;
+    if (!Array.isArray(log) || log.length === 0 || log.length > 50) {
+      return res.status(400).json({ error: 'invalid transcriptLog' });
+    }
+    for (const entry of log) {
+      if (!entry || !Array.isArray(entry.conversationHistory) || entry.conversationHistory.length < 2) {
+        return res.status(400).json({ error: 'invalid entry in transcriptLog' });
+      }
+      for (const msg of entry.conversationHistory) {
+        if (!msg || (msg.role !== 'user' && msg.role !== 'assistant') || typeof msg.content !== 'string') {
+          return res.status(400).json({ error: 'invalid message in transcriptLog entry' });
+        }
+      }
+    }
+
+    try {
+      // Verify opt-in server-side — client cannot forge this.
+      const visitorSnap = await db.collection('demo_visitors').doc(sessionId).get();
+      if (!visitorSnap.exists || !visitorSnap.data().optIn) {
+        return res.status(200).json({ ok: true }); // silently ignore non-opted-in sessions
+      }
+
+      await db.collection('transcripts').add({
+        sessionId,
+        transcriptLog: log,
+        ts: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      const visitor = visitorSnap.data();
+      const lessonCount = log.filter(function(e) { return e.source === 'lesson'; }).length;
+      const quizCount   = log.filter(function(e) { return e.source === 'quiz';   }).length;
+      await db.collection('mail').add({
+        to: 'josephlselby@gmail.com',
+        message: {
+          subject: 'Hegemon transcript received' + (visitor.name ? ': ' + visitor.name : ''),
+          text: [
+            'A chat transcript was submitted.',
+            '',
+            'Name:                 ' + (visitor.name  || '(not provided)'),
+            'Org:                  ' + (visitor.org   || '(not provided)'),
+            'Email:                ' + (visitor.email || '(not provided)'),
+            'Session ID:           ' + sessionId,
+            'Lesson conversations: ' + lessonCount,
+            'Quiz conversations:   ' + quizCount,
+            'Total conversations:  ' + log.length
+          ].join('\n')
+        }
+      });
+
+      res.status(200).json({ ok: true });
+    } catch (e) {
+      console.error('submitTranscript error:', e);
+      res.status(502).json({ error: 'Could not store transcript.' });
     }
   }
 );
