@@ -1,5 +1,5 @@
 /*
- * Hegemon Learning Guide — Firebase Cloud Function proxy   (dev-order step 6)
+ * Hegemon Learning Guide — Firebase Cloud Function proxy   (dev-order step 6) r2
  *
  * Accepts a misconception code, marker context, and conversation history from
  * the client; enforces per-IP rate limiting via Firestore; calls the Claude

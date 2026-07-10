@@ -681,7 +681,8 @@
 
     if (!isCorrect){
       var code = HegemonDetect.detectQuadrantError(q.corner, named);
-      var group = "MC-04"; // all quadrant naming errors share one threshold group
+      // Keep the two question pairs independent: Q7+Q8 (name format) and Q9+Q10 (coord format)
+      var group = q.format === 'coord' ? 'MC-04-coord' : 'MC-04-name';
       if (!mcTriggered[group] && !mcCountedAtIdx[idx]){
         mcCountedAtIdx[idx] = group;
         mcErrorCount[group] = (mcErrorCount[group] || 0) + 1;
