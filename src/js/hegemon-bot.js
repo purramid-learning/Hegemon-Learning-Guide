@@ -970,45 +970,63 @@
       var htmlLog = JSON.parse(sessionStorage.getItem('hg_transcript_html_log') || '[]');
       htmlLog.forEach(function(entry) {
         var label = entry.source === 'lesson' ? 'Lesson' : 'Quiz';
-        archivedHtml += '<div class="page-sep">' + label + '</div><div class="wrap">' + entry.html + '</div>';
+        archivedHtml += '<div class="hg-pdf-sep">' + label + '</div><div class="hg-pdf-wrap">' + entry.html + '</div>';
       });
     } catch (e) {}
 
     // Current page's live transcript (last quiz conversation, not yet archived).
     var currentHtml = transcriptEl.innerHTML
-      ? '<div class="page-sep">Quiz</div><div class="wrap">' + transcriptEl.innerHTML + '</div>'
+      ? '<div class="hg-pdf-sep">Quiz</div><div class="hg-pdf-wrap">' + transcriptEl.innerHTML + '</div>'
       : '';
 
     var body = archivedHtml + currentHtml;
     if (!body) return;
 
-    var win = window.open('', '_blank');
-    if (!win) return;
-    var html = '<!DOCTYPE html><html><head>' +
-      '<meta charset="utf-8">' +
-      '<title>Hegemon Chat History</title>' +
-      '<style>' +
-      'body{font-family:"Space Grotesk",system-ui,sans-serif;max-width:600px;margin:40px auto;color:#16263d;padding:0 20px}' +
-      'h1{font-size:1.1rem;color:#54647a;margin:0 0 24px;font-weight:600}' +
-      '.page-sep{font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#54647a;border-bottom:2px solid #e6edf4;padding-bottom:6px;margin:28px 0 14px}' +
-      '.wrap{display:flex;flex-direction:column;gap:12px;margin-bottom:8px}' +
-      '.hg-msg{max-width:85%;padding:10px 14px;border-radius:12px;font-size:.9rem;line-height:1.6;white-space:pre-wrap;word-break:break-word}' +
-      '.hg-msg--bot,.hg-msg--success{background:#f6f9fc;border:1px solid #e6edf4}' +
-      '.hg-msg--user{background:#16263d;color:#fff;margin-left:auto;text-align:right}' +
-      '.hg-msg--escalate{background:#fff8e6;border:1px solid #f5d87a}' +
-      '.hg-msg--loading,.hg-msg--action,.hg-closed-note{display:none}' +
-      '.hg-sep{text-align:center;font-size:.75rem;color:#54647a;margin:12px 0 4px;display:flex;align-items:center;gap:8px;font-weight:600}' +
-      '.hg-sep::before,.hg-sep::after{content:"";flex:1;border-top:1px solid #e6edf4}' +
-      '@media print{body{margin:20px;padding:0 10px}}' +
-      '</style>' +
-      '</head><body>' +
-      '<h1>Hegemon Chat — Lesson 1</h1>' +
-      body +
-      '<p style="margin-top:32px;font-size:.75rem;color:#54647a">Use your browser\'s File &gt; Print &gt; Save as PDF to save a copy.</p>' +
-      '</body></html>';
-    win.document.write(html);
-    win.document.close();
-    win.focus();
+    // Inject temporary styles: PDF layout classes + hide interactive-only nodes.
+    var tmpStyle = document.createElement('style');
+    tmpStyle.id = 'hg-pdf-tmp';
+    tmpStyle.textContent =
+      '.hg-pdf-sep{font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;' +
+        'color:#54647a;border-bottom:2px solid #e6edf4;padding-bottom:6px;margin:28px 0 14px}' +
+      '.hg-pdf-wrap{display:flex;flex-direction:column;gap:12px;margin-bottom:8px}' +
+      '.hg-msg--loading,.hg-msg--action,.hg-closed-note{display:none!important}';
+    document.head.appendChild(tmpStyle);
+
+    // Off-screen container inherits the page's .hg-msg* styles already injected by init().
+    var container = document.createElement('div');
+    container.style.cssText =
+      'position:fixed;left:-9999px;top:0;width:600px;background:#fff;' +
+      'padding:40px;box-sizing:border-box;font-family:"Space Grotesk",system-ui,sans-serif;color:#16263d';
+    container.innerHTML =
+      '<p style="font-size:1.1rem;color:#54647a;margin:0 0 24px;font-weight:600">Hegemon Chat — Lesson 1</p>' +
+      body;
+    document.body.appendChild(container);
+
+    function cleanup() {
+      if (container.parentNode) container.parentNode.removeChild(container);
+      var s = document.getElementById('hg-pdf-tmp');
+      if (s) s.parentNode.removeChild(s);
+    }
+
+    function doRender() {
+      html2pdf().set({
+        margin: 15,
+        filename: 'hegemon-chat.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
+      }).from(container).save().then(cleanup).catch(cleanup);
+    }
+
+    if (window.html2pdf) {
+      doRender();
+    } else {
+      var script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+      script.onload = doRender;
+      script.onerror = cleanup;
+      document.head.appendChild(script);
+    }
   }
 
   return {
