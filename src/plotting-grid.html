@@ -676,7 +676,7 @@
       if (!mcTriggered[group] && !mcCountedAtIdx[idx]){
         mcCountedAtIdx[idx] = group;
         mcErrorCount[group] = (mcErrorCount[group] || 0) + 1;
-        if (mcErrorCount[group] >= 1){
+        if (mcErrorCount[group] >= 2){
           mcTriggered[group] = true;
           currentTriggeredGroup = group;
           HegemonBot.open({
