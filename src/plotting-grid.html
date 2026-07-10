@@ -829,6 +829,24 @@
     }
   });
 
+  /* ---- Panel closed — unlock if quiz is still locked from a failed intervention ---- */
+  document.addEventListener('hegemon:closed', function(){
+    if (!locked) return;
+    locked = false;
+    svg.classList.remove('locked');
+    if (QUESTIONS[idx].type === 'plot') {
+      placed = null;
+      marker.style.opacity = 0;
+      btnSubmit.disabled = true;
+      elStatus.textContent = 'No point placed yet.';
+    } else {
+      selectedQuadrant = null;
+      clearQuadrantSelection();
+      btnSubmit.disabled = true;
+      elStatus.textContent = 'No quadrant selected yet.';
+    }
+  });
+
   /* ---- Finish / restart ---- */
   function submitTranscriptLog() {
     try {

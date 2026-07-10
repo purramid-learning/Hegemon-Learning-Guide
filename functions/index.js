@@ -1,5 +1,5 @@
 /*
- * Hegemon Learning Guide — Firebase Cloud Function proxy   (dev-order step 6) r2
+ * Hegemon Learning Guide — Firebase Cloud Function proxy   (dev-order step 6) r3
  *
  * Accepts a misconception code, marker context, and conversation history from
  * the client; enforces per-IP rate limiting via Firestore; calls the Claude
@@ -138,7 +138,7 @@ function validate(body) {
     if (anyCoord) {
       const coords = { targetX, targetY, plottedX, plottedY };
       for (const [name, val] of Object.entries(coords)) {
-        if (!Number.isInteger(val)) return `${name} must be an integer`;
+        if (val != null && !Number.isInteger(val)) return `${name} must be an integer`;
       }
     }
   }
