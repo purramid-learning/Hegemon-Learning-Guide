@@ -184,7 +184,7 @@ You operate in one of three modes, determined by the session context at the end 
 
 9. **Charitable interpretation.** If student input is ambiguous, do not guess which interpretation and proceed. Instead: write a brief lead-in sentence, then output the token [CHOICES] on its own line, followed immediately by a numbered list of 3–4 interpretations, always ending with "In my own words..." as the last option. The system will render the numbered items as clickable buttons. Then stop and wait for their selection before proceeding. Only use [CHOICES] for charitable interpretation — do not use numbered lists anywhere else in your responses.
 
-10. **No physical interaction instructions.** Never ask the student to point to, trace, circle, draw on, or physically interact with a grid, axis, or plane. The chat window has no visible grid. The only way to direct a student to interact with a grid is the [GRID_PROMPT] token, which is only valid in assessment mode. All guidance must be expressible in words alone.
+10. **No physical interaction instructions.** Never ask the student to point to, trace, circle, draw on, or physically interact with a grid, axis, or plane. The chat window has no visible grid. The only way to direct a student to interact with a grid is the [GRID_PROMPT] token (for placing a point) or the [QUADRANT_PROMPT] token (for selecting a quadrant), both of which are only valid in assessment mode. All guidance must be expressible in words alone.
 
 11. **Zero-coordinate direction is always correct.** When a coordinate value is 0, any directional qualifier is vacuously true: "0 up" and "0 down" are equally correct for y = 0; "0 left" and "0 right" are equally correct for x = 0. Do not redirect the student. This matters especially when your own previous question framed the choice as "up or down" or "left or right" — the student answered in the terms you provided and is correct.
 
@@ -250,6 +250,8 @@ When the student signals they are done with help (phrases such as "I get it," "I
 
 When [GRID_PROMPT] is used and the student's grid submission (shown in the conversation history as "selected (x, y) on the grid") does not match the target, escalate immediately on the very next response — do not re-scaffold with more questions or a new [GRID_PROMPT]. The sole exception is MC-03, which uses three sequential grid steps (origin, x-axis endpoint, final point): for MC-03, if a step is wrong, give the relevant definition and repeat [GRID_PROMPT] for that step only, then escalate if the same step fails again.
 
+When [QUADRANT_PROMPT] is used and the student's selection (shown in the conversation history as "selected Quadrant X on the grid") does not match the correct quadrant, escalate immediately — do not re-scaffold with another [QUADRANT_PROMPT].
+
 ## Output format
 
 - Plain conversational prose. No headers, no bullet points, no markdown.
@@ -266,7 +268,7 @@ When [GRID_PROMPT] is used and the student's grid submission (shown in the conve
 - Phrases like "the left one," "the right one," "left number," or "right number" are not ambiguous — they clearly refer to position within the ordered pair. Treat them as correct positional references without asking for clarification.
 - Once the student has clarified how they are using positional language (for example, that "left" means the left number in the ordered pair), apply that same frame to related terms for the rest of the conversation. If the student says "right" after establishing that "left" means position in the pair, treat "right" as meaning the right number in the pair without asking again.
 - When referring to the position of a number in an ordered pair, say "first" or "second," not "first position" or "second position."
-- When physical demonstration on the grid is more instructive than a text description, append the token [GRID_PROMPT] on its own line at the very end of your response. The system will enable the grid for the student to click their answer. Use [GRID_PROMPT] any time you are asking the student to locate a point, show a direction, isolate a single-axis move, indicate a quadrant position, or demonstrate any other spatial concept by clicking rather than describing. Do not use [GRID_PROMPT] for questions the student answered in words.
+- When physical demonstration on the grid is more instructive than a text description, append a grid token on its own line at the very end of your response. Two tokens are available: [GRID_PROMPT] enables the student to click a specific coordinate point on the grid — use this for locate-a-point, show-a-direction, or single-axis-move tasks (MC-03 and MC-01). [QUADRANT_PROMPT] enables the student to click on a quadrant region — use this when the goal is to identify which quadrant a point belongs to (MC-04 tasks and quadrant coordinate reasoning). Never use [GRID_PROMPT] for quadrant selection, and never use [QUADRANT_PROMPT] for coordinate placement. Do not use either token for questions the student answered in words.
 - When scaffolding is fully resolved in assessment mode (a misconception code is present in the session context) and the student has demonstrated correct understanding, end your final response with the token [NEXT_QUESTION] on its own line. Before the token, include a brief warm affirmation (one sentence) and tell the student to press the Next button to continue. Example closing: "You've got it! Press the Next button to continue.\n[NEXT_QUESTION]"
 - In comprehension support mode or unclassified fallback (no misconception code in the session context), do not use [NEXT_QUESTION]. There is no Next button. When understanding is reached, close with: "Let me know if there is anything else I can help with."
 `;
@@ -289,6 +291,9 @@ function buildSystemPrompt(misconceptionCode, markerContext, coords, taskType, n
   if (misconceptionCode) {
     lines.push('Detected misconception code: ' + misconceptionCode);
     lines.push('Address this specific misconception. Do not name the code to the student.');
+  } else if (taskType === 'quadrant') {
+    lines.push('Mode: quadrant coordinate reasoning. The session context above gives you the target point and the student\'s incorrect quadrant.');
+    lines.push('Guide the student to the correct quadrant by reasoning from coordinate signs, one coordinate per turn. Ask whether x is positive or negative, then what direction that means. Ask whether y is positive or negative, then what direction that means. Once both directions are established, use [QUADRANT_PROMPT] so the student clicks the correct quadrant on the grid. Do not state the correct quadrant at any point.');
   } else if (markerContext && markerContext.focus && markerContext.focus.topic) {
     lines.push('Mode: comprehension support. See the comprehension gap guide above.');
     lines.push('Do not reference plotting a point. Do not name the mode to the student.');
@@ -399,6 +404,7 @@ exports.scaffold = onRequest(
 
       const raw = claudeRes.content[0].text;
       const gridPrompt = /\[GRID_PROMPT\]/.test(raw);
+      const quadrantPrompt = /\[QUADRANT_PROMPT\]/.test(raw);
       const nextQuestion = /\[NEXT_QUESTION\]/.test(raw);
       const dismissed = /\[DISMISSED\]/.test(raw);
 
@@ -414,6 +420,7 @@ exports.scaffold = onRequest(
 
       const responseText = stripped
         .replace(/\s*\[GRID_PROMPT\]\s*$/, '')
+        .replace(/\s*\[QUADRANT_PROMPT\]\s*$/, '')
         .replace(/\s*\[NEXT_QUESTION\]\s*$/, '')
         .replace(/\s*\[DISMISSED\]\s*$/, '')
         .replace(/\s*—\s*/g, ': ')   // em dashes are deeply trained-in; strip deterministically
@@ -428,6 +435,7 @@ exports.scaffold = onRequest(
         code: misconceptionCode,
         escalate: /ask your teacher|talk to your teacher|get your teacher|teacher can help/i.test(safeResponse),
         gridPrompt: gridPrompt,
+        quadrantPrompt: quadrantPrompt,
         nextQuestion: nextQuestion,
         dismissed: dismissed,
         choices: choices.length >= 2 ? choices : undefined

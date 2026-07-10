@@ -60,6 +60,8 @@
   var gridPromptActive = false;
   var pendingGridCoords = null;
   var gridSubmitBtn = null;
+  var quadrantPromptActive = false;
+  var pendingQuadrantSelection = null;
   var introShown = false;
   var currentTaskType = null;
   var transcriptArchived = false;
@@ -445,10 +447,13 @@
     hasConversation = false;
     gridPromptActive = false;
     pendingGridCoords = null;
+    quadrantPromptActive = false;
+    pendingQuadrantSelection = null;
     currentTaskType = null;
     transcriptArchived = false;
     hideGridSubmitButton();
     document.dispatchEvent(new CustomEvent('hegemon:grid-done'));
+    document.dispatchEvent(new CustomEvent('hegemon:quadrant-done'));
   }
 
   /* ---- messages ---- */
@@ -609,6 +614,12 @@
           }
         } else if (data.choices && data.choices.length) {
           showChoiceButtons(data.choices);
+        } else if (data.quadrantPrompt) {
+          quadrantPromptActive = true;
+          pendingQuadrantSelection = null;
+          setInputEnabled(false);
+          document.dispatchEvent(new CustomEvent('hegemon:quadrant-prompt'));
+          showGridSubmitButton();
         } else if (data.gridPrompt) {
           gridPromptActive = true;
           pendingGridCoords = null;
@@ -649,19 +660,29 @@
   }
 
   function handleGridSubmit() {
-    if (!pendingGridCoords) return;
-    var coords = pendingGridCoords;
-    var displayText = 'selected (' + coords.x + ', ' + coords.y + ') on the grid';
-    var apiText = displayText;
-    pendingGridCoords = null;
-    gridPromptActive = false;
-    retryUsed = true;
-    hideGridSubmitButton();
-    document.dispatchEvent(new CustomEvent('hegemon:grid-done'));
-    // Add to history as plain text for Claude; display as italic action without "I".
-    conversationHistory.push({ role: 'user', content: apiText });
-    appendGridSubAnswer(displayText);
-    fetchResponse(null);
+    if (pendingQuadrantSelection) {
+      var q = pendingQuadrantSelection;
+      var displayText = 'selected Quadrant ' + q + ' on the grid';
+      pendingQuadrantSelection = null;
+      quadrantPromptActive = false;
+      retryUsed = true;
+      hideGridSubmitButton();
+      document.dispatchEvent(new CustomEvent('hegemon:quadrant-done'));
+      conversationHistory.push({ role: 'user', content: displayText });
+      appendGridSubAnswer(displayText);
+      fetchResponse(null);
+    } else if (pendingGridCoords) {
+      var coords = pendingGridCoords;
+      var displayText = 'selected (' + coords.x + ', ' + coords.y + ') on the grid';
+      pendingGridCoords = null;
+      gridPromptActive = false;
+      retryUsed = true;
+      hideGridSubmitButton();
+      document.dispatchEvent(new CustomEvent('hegemon:grid-done'));
+      conversationHistory.push({ role: 'user', content: displayText });
+      appendGridSubAnswer(displayText);
+      fetchResponse(null);
+    }
   }
 
   /* ---- public API ---- */
@@ -672,6 +693,11 @@
     document.addEventListener('hegemon:grid-placed', function(e) {
       if (!gridPromptActive) return;
       pendingGridCoords = e.detail;
+      if (gridSubmitBtn) gridSubmitBtn.disabled = false;
+    });
+    document.addEventListener('hegemon:quadrant-selected', function(e) {
+      if (!quadrantPromptActive) return;
+      pendingQuadrantSelection = e.detail;
       if (gridSubmitBtn) gridSubmitBtn.disabled = false;
     });
   }

@@ -148,6 +148,8 @@
   .quad-hit{fill:transparent;cursor:pointer;transition:fill .12s}
   .quad-hit:hover{fill:rgba(47,109,240,0.08)}
   .locked .quad-hit{cursor:default;pointer-events:none}
+  .hg-quadrant-submode .quad-hit{cursor:pointer;pointer-events:auto}
+  .hg-quadrant-submode .quad-hit:hover{fill:rgba(47,109,240,0.08)}
   .quad-no-labels .quad-label{visibility:hidden}
 
   /* ---------- status + controls ---------- */
@@ -352,6 +354,7 @@
   var idx = 0;
   var placed = null;           // {x,y} or null — current placed point (plot questions)
   var locked = false;
+  var hegemonQuadrantMode = false;
   var submissions = [];
   var marker, cursorRing, questionDot;
   var cursor = {x:0, y:0};
@@ -462,6 +465,12 @@
     Object.keys(qSelRects).forEach(function(k){
       qSelRects[k].setAttribute("fill","rgba(47,109,240,0)");
     });
+    if (hegemonQuadrantMode) {
+      // Hegemon-driven selection: dispatch event, don't touch the quiz submit button
+      qSelRects[key].setAttribute("fill","rgba(47,109,240,0.6)");
+      document.dispatchEvent(new CustomEvent('hegemon:quadrant-selected', { detail: key }));
+      return;
+    }
     if (selectedQuadrant === key){
       selectedQuadrant = null;
       btnSubmit.disabled = true;
@@ -672,7 +681,7 @@
 
     if (!isCorrect){
       var code = HegemonDetect.detectQuadrantError(q.corner, named);
-      var group = code || "MC-04-unclassified";
+      var group = "MC-04"; // all quadrant naming errors share one threshold group
       if (!mcTriggered[group] && !mcCountedAtIdx[idx]){
         mcCountedAtIdx[idx] = group;
         mcErrorCount[group] = (mcErrorCount[group] || 0) + 1;
@@ -784,6 +793,21 @@
     subAnswerMode = false;
     marker.style.opacity = 0;
     svg.classList.remove('hg-submode');
+    elStatus.textContent = 'Recorded.';
+  });
+
+  /* ---- Quadrant sub-answer mode (Hegemon [QUADRANT_PROMPT]) ---- */
+  document.addEventListener('hegemon:quadrant-prompt', function(){
+    hegemonQuadrantMode = true;
+    svg.classList.add('hg-quadrant-submode');
+    clearQuadrantSelection();
+    elStatus.textContent = 'Click a quadrant to answer.';
+  });
+
+  document.addEventListener('hegemon:quadrant-done', function(){
+    hegemonQuadrantMode = false;
+    svg.classList.remove('hg-quadrant-submode');
+    clearQuadrantSelection();
     elStatus.textContent = 'Recorded.';
   });
 
