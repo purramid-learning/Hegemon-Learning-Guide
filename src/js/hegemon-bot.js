@@ -992,10 +992,20 @@
       '.hg-msg--loading,.hg-msg--action,.hg-closed-note{display:none!important}';
     document.head.appendChild(tmpStyle);
 
-    // Off-screen container inherits the page's .hg-msg* styles already injected by init().
+    // Overlay hides the render container from the user while html2canvas captures it.
+    // html2canvas requires the element to be in the viewport; we keep it beneath the overlay.
+    var overlay = document.createElement('div');
+    overlay.style.cssText =
+      'position:fixed;inset:0;background:#fff;z-index:99998;' +
+      'display:flex;align-items:center;justify-content:center;' +
+      'font-family:"Space Grotesk",system-ui,sans-serif;color:#54647a;font-size:1rem';
+    overlay.textContent = 'Generating PDF…';
+    document.body.appendChild(overlay);
+
+    // Render container sits in the viewport (at z-index below overlay) so html2canvas can capture it.
     var container = document.createElement('div');
     container.style.cssText =
-      'position:fixed;left:-9999px;top:0;width:600px;background:#fff;' +
+      'position:fixed;left:0;top:0;width:600px;background:#fff;z-index:99997;' +
       'padding:40px;box-sizing:border-box;font-family:"Space Grotesk",system-ui,sans-serif;color:#16263d';
     container.innerHTML =
       '<p style="font-size:1.1rem;color:#54647a;margin:0 0 24px;font-weight:600">Hegemon Chat — Lesson 1</p>' +
@@ -1004,6 +1014,7 @@
 
     function cleanup() {
       if (container.parentNode) container.parentNode.removeChild(container);
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
       var s = document.getElementById('hg-pdf-tmp');
       if (s) s.parentNode.removeChild(s);
     }
