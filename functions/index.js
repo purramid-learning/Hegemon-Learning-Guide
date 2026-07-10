@@ -172,7 +172,7 @@ You operate in one of three modes, determined by the session context at the end 
 
 3. **One rung per turn.** One idea, one question. The student responds before the next rung appears. Never front-load multiple hints. **A response may contain at most one question mark.** If you reach the end of a sentence and realize you want to ask a follow-up, stop — that follow-up belongs in the next turn. This applies regardless of how the second question is introduced ("and what does that tell you…", "so which axis…", "can you tell me…") — structure does not change the count. Exception: when asking about only one component of an ordered pair would reveal which coordinate is wrong, ask about both coordinates in one response — always in (x, y) order, never reordered. Reordering implies the reordered axis is the problem. That paired question counts as one rung and one question mark. **This exception applies only in assessment mode (a task ordered pair is present in the session context). It never applies in comprehension support mode.**
 
-4. **One unknown per question.** Each question must have exactly one thing the student supplies. Do not frame a question with context that answers its own sub-questions before the student can ("x becomes negative, y stays positive — which corner?"). Strip framing down to the single unknown. Surface definitions and conventions freely, but stop before resolving any piece the student should discover. **Explicit violation: "Which axis runs left to right, and which runs up and down?" — one question mark, two unknowns. Ask one ("Which axis runs left to right?"), wait for the answer, then ask the other.**
+4. **One unknown per question.** Each question must have exactly one thing the student supplies. If a complete answer requires the student to state more than one fact, the question is compound — regardless of grammar. Do not frame a question with context that answers its own sub-questions before the student can ("x becomes negative, y stays positive — which corner?"). Strip framing down to the single unknown. Surface definitions and conventions freely, but stop before resolving any piece the student should discover. **Violation — explicit "and": "Which axis runs left to right, and which runs up and down?" — one question mark, two unknowns. Violation — "each": "Which direction does each one run?" — "each" forces two answers. Fix for both: name one referent, ask about it, wait for the answer, then ask about the other in the next turn.**
 
 5. **Stop early.** The moment the student can carry it, hand off. The failure mode is ten minutes of step-by-step narration the student extracts instead of two minutes of thinking.
 
@@ -473,21 +473,23 @@ exports.recordVisitor = onRequest(
         ts: admin.firestore.FieldValue.serverTimestamp()
       });
 
-      await db.collection('mail').add({
-        to: 'josephlselby@gmail.com',
-        message: {
-          subject: 'Hegemon demo started' + (name ? ': ' + name : ''),
-          text: [
-            'A visitor started the Hegemon demo.',
-            '',
-            'Name:       ' + (name  || '(not provided)'),
-            'Org:        ' + (org   || '(not provided)'),
-            'Email:      ' + (email || '(not provided)'),
-            'Transcript: ' + (optIn ? 'Yes' : 'No'),
-            'Session ID: ' + (sessionId || '(none)')
-          ].join('\n')
-        }
-      });
+      if (name || org || email) {
+        await db.collection('mail').add({
+          to: 'josephlselby@gmail.com',
+          message: {
+            subject: 'Hegemon demo started' + (name ? ': ' + name : ''),
+            text: [
+              'A visitor started the Hegemon demo.',
+              '',
+              'Name:       ' + (name  || '(not provided)'),
+              'Org:        ' + (org   || '(not provided)'),
+              'Email:      ' + (email || '(not provided)'),
+              'Transcript: ' + (optIn ? 'Yes' : 'No'),
+              'Session ID: ' + (sessionId || '(none)')
+            ].join('\n')
+          }
+        });
+      }
 
       res.status(200).json({ ok: true });
     } catch (e) {
