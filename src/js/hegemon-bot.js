@@ -982,61 +982,28 @@
     var body = archivedHtml + currentHtml;
     if (!body) return;
 
-    // Inject temporary styles: PDF layout classes + hide interactive-only nodes.
-    var tmpStyle = document.createElement('style');
-    tmpStyle.id = 'hg-pdf-tmp';
-    tmpStyle.textContent =
+    var styles =
+      '<style>' +
+      'body{font-family:"Space Grotesk",system-ui,sans-serif;color:#16263d;margin:40px;background:#fff}' +
       '.hg-pdf-sep{font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;' +
         'color:#54647a;border-bottom:2px solid #e6edf4;padding-bottom:6px;margin:28px 0 14px}' +
       '.hg-pdf-wrap{display:flex;flex-direction:column;gap:12px;margin-bottom:8px}' +
-      '.hg-msg--loading,.hg-msg--action,.hg-closed-note{display:none!important}';
-    document.head.appendChild(tmpStyle);
+      '.hg-msg--loading,.hg-msg--action,.hg-closed-note{display:none!important}' +
+      '.hg-save-note{margin-top:32px;padding-top:16px;border-top:1px solid #e6edf4;' +
+        'font-size:.8rem;color:#54647a}' +
+      '</style>';
 
-    // Overlay hides the render container from the user while html2canvas captures it.
-    // html2canvas requires the element to be in the viewport; we keep it beneath the overlay.
-    var overlay = document.createElement('div');
-    overlay.style.cssText =
-      'position:fixed;inset:0;background:#fff;z-index:99998;' +
-      'display:flex;align-items:center;justify-content:center;' +
-      'font-family:"Space Grotesk",system-ui,sans-serif;color:#54647a;font-size:1rem';
-    overlay.textContent = 'Generating PDF…';
-    document.body.appendChild(overlay);
-
-    // Render container sits in the viewport (at z-index below overlay) so html2canvas can capture it.
-    var container = document.createElement('div');
-    container.style.cssText =
-      'position:fixed;left:0;top:0;width:600px;background:#fff;z-index:99997;' +
-      'padding:40px;box-sizing:border-box;font-family:"Space Grotesk",system-ui,sans-serif;color:#16263d';
-    container.innerHTML =
+    var html =
+      '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Hegemon Chat</title>' + styles + '</head><body>' +
       '<p style="font-size:1.1rem;color:#54647a;margin:0 0 24px;font-weight:600">Hegemon Chat — Lesson 1</p>' +
-      body;
-    document.body.appendChild(container);
+      body +
+      '<p class="hg-save-note">To save a copy, use your browser\'s File &gt; Save Page As.</p>' +
+      '</body></html>';
 
-    function cleanup() {
-      if (container.parentNode) container.parentNode.removeChild(container);
-      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-      var s = document.getElementById('hg-pdf-tmp');
-      if (s) s.parentNode.removeChild(s);
-    }
-
-    function doRender() {
-      html2pdf().set({
-        margin: 15,
-        filename: 'hegemon-chat.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, logging: false },
-        jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
-      }).from(container).save().then(cleanup).catch(cleanup);
-    }
-
-    if (window.html2pdf) {
-      doRender();
-    } else {
-      var script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-      script.onload = doRender;
-      script.onerror = cleanup;
-      document.head.appendChild(script);
+    var win = window.open('', '_blank');
+    if (win) {
+      win.document.write(html);
+      win.document.close();
     }
   }
 
