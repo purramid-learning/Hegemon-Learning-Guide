@@ -279,7 +279,16 @@ When [QUADRANT_PROMPT] is used and the student's selection (shown in the convers
 function buildSystemPrompt(misconceptionCode, markerContext, coords, taskType, namedQuadrant, correctQuadrant) {
   const lines = [SCAFFOLDING_RULES, '', '---', '', '[SESSION CONTEXT]'];
 
-  if (taskType === 'quadrant' && coords) {
+  if (taskType === 'quadrant' && !coords) {
+    // Name-recall format: the student was given a quadrant number and asked to click
+    // its location. No coordinate was shown, so the payload omits one — that absence
+    // is what distinguishes recall from coordinate-identification.
+    lines.push('Task: student was asked to find Quadrant ' + (correctQuadrant || '?') +
+               ' and click where it sits. No coordinate was shown; this checks recall of where each quadrant is and how they are numbered.');
+    lines.push(namedQuadrant
+      ? 'Student clicked the corner that is actually Quadrant ' + namedQuadrant + '.'
+      : 'Student clicked the wrong corner.');
+  } else if (taskType === 'quadrant' && coords) {
     lines.push('Task: student was asked to identify the quadrant containing (' + coords.targetX + ', ' + coords.targetY + ')');
     if (namedQuadrant && correctQuadrant) {
       lines.push('Student named Quadrant ' + namedQuadrant + '. Correct answer: Quadrant ' + correctQuadrant + '.');
@@ -294,6 +303,9 @@ function buildSystemPrompt(misconceptionCode, markerContext, coords, taskType, n
   if (misconceptionCode) {
     lines.push('Detected misconception code: ' + misconceptionCode);
     lines.push('Address this specific misconception. Do not name the code to the student.');
+  } else if (taskType === 'quadrant' && !coords) {
+    lines.push('Mode: quadrant numbering recall. The student knows which quadrant number to find but placed it at the wrong corner.');
+    lines.push('Work one step per turn. First anchor Quadrant I using the convention that it is the corner where both coordinates are positive. Then, one axis-change at a time, reason about which sign flips to move to the next quadrant number, until they reach the one they were asked to find. Never say clockwise or counterclockwise. Do not reference any coordinate. Do not tell the student which corner is correct. When they can state where it belongs, use [QUADRANT_PROMPT] so they click it.');
   } else if (taskType === 'quadrant') {
     lines.push('Mode: quadrant coordinate reasoning. The session context above gives you the target point and the student\'s incorrect quadrant.');
     lines.push('Guide the student to the correct quadrant by reasoning from coordinate signs, one coordinate per turn. Ask whether x is positive or negative, then what direction that means. Ask whether y is positive or negative, then what direction that means. Once both directions are established, use [QUADRANT_PROMPT] so the student clicks the correct quadrant on the grid. Do not state the correct quadrant at any point.');
@@ -557,6 +569,18 @@ exports.submitTranscript = onRequest(
       const visitor = visitorSnap.data();
       const lessonCount = log.filter(function(e) { return e.source === 'lesson'; }).length;
       const quizCount   = log.filter(function(e) { return e.source === 'quiz';   }).length;
+
+      const convoLines = [];
+      log.forEach(function(entry, i) {
+        convoLines.push('');
+        convoLines.push('=== ' + (entry.source || 'unknown').toUpperCase() + ' CONVERSATION ' + (i + 1) + ' ===');
+        if (entry.questionLabel) convoLines.push('Question: ' + entry.questionLabel);
+        (entry.conversationHistory || []).forEach(function(msg) {
+          const speaker = msg.role === 'user' ? 'Student' : 'Athena ';
+          convoLines.push(speaker + ': ' + msg.content);
+        });
+      });
+
       await db.collection('mail').add({
         to: 'josephlselby@gmail.com',
         message: {
@@ -564,14 +588,13 @@ exports.submitTranscript = onRequest(
           text: [
             'A chat transcript was submitted.',
             '',
-            'Name:                 ' + (visitor.name  || '(not provided)'),
-            'Org:                  ' + (visitor.org   || '(not provided)'),
-            'Email:                ' + (visitor.email || '(not provided)'),
-            'Session ID:           ' + sessionId,
+            'Name:    ' + (visitor.name  || '(not provided)'),
+            'Org:     ' + (visitor.org   || '(not provided)'),
+            'Email:   ' + (visitor.email || '(not provided)'),
+            'Session: ' + sessionId,
             'Lesson conversations: ' + lessonCount,
-            'Quiz conversations:   ' + quizCount,
-            'Total conversations:  ' + log.length
-          ].join('\n')
+            'Quiz conversations:   ' + quizCount
+          ].concat(convoLines).join('\n')
         }
       });
 

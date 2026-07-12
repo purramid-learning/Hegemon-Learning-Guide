@@ -700,6 +700,10 @@
       pendingQuadrantSelection = e.detail;
       if (gridSubmitBtn) gridSubmitBtn.disabled = false;
     });
+    // Archive any in-progress conversation before the page unloads (e.g. lesson → quiz navigation).
+    window.addEventListener('beforeunload', function() {
+      archiveConversationToSession();
+    });
   }
 
   function openWithParams(params) {
@@ -964,22 +968,19 @@
   }
 
   function downloadChat() {
-    // Gather archived conversations from sessionStorage (lesson + earlier quiz sessions).
-    var archivedHtml = '';
+    // Archive any in-progress conversation before reading the log, so the current
+    // session is included without having to duplicate transcriptEl.innerHTML.
+    archiveConversationToSession();
+
+    var body = '';
     try {
       var htmlLog = JSON.parse(sessionStorage.getItem('hg_transcript_html_log') || '[]');
       htmlLog.forEach(function(entry) {
         var label = entry.source === 'lesson' ? 'Lesson' : 'Quiz';
-        archivedHtml += '<div class="hg-pdf-sep">' + label + '</div><div class="hg-pdf-wrap">' + entry.html + '</div>';
+        body += '<div class="hg-pdf-sep">' + label + '</div><div class="hg-pdf-wrap">' + entry.html + '</div>';
       });
     } catch (e) {}
 
-    // Current page's live transcript (last quiz conversation, not yet archived).
-    var currentHtml = transcriptEl.innerHTML
-      ? '<div class="hg-pdf-sep">Quiz</div><div class="hg-pdf-wrap">' + transcriptEl.innerHTML + '</div>'
-      : '';
-
-    var body = archivedHtml + currentHtml;
     if (!body) return;
 
     var styles =
