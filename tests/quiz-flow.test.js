@@ -14,6 +14,9 @@
  *     and it survives Back/Next navigation
  *   - Next restores an answered destination's display instead of wiping it
  *   - chat-resolved questions count as completed (no recycle; 10 of 10)
+ *   - Back/Next/Submit with an open chat dismiss it (noted action), then proceed;
+ *     a submission completing an error pair reopens the panel in the same tick
+ *   - interventions carry taskType ("plot"/"quadrant") so retry flows work
  *
  * Determinism: Math.random is pinned to 0 and TargetGenerator is stubbed, so
  * the question order is fixed:
@@ -101,12 +104,12 @@ global.TargetGenerator = {
 };
 Math.random = function () { return 0; };
 
-var botOpen = false, openCalls = [];
+var botOpen = false, openCalls = [], dismissCalls = [], botLog = [];
 global.HegemonBot = {
   init: function () {}, reset: function () { botOpen = false; },
   isOpen: function () { return botOpen; },
-  open: function (p) { openCalls.push(p); botOpen = true; },
-  notifyCorrect: function () {}, notifyWrong: function () {},
+  open: function (p) { openCalls.push(p); botLog.push('open'); botOpen = true; },
+  dismiss: function (note) { dismissCalls.push(note); botLog.push('dismiss'); botOpen = false; },
   hasHistory: function () { return false; }, clearHistory: function () {},
   downloadChat: function () {}
 };
@@ -146,7 +149,7 @@ function submit() { byId.submit.click(); }
 function back()   { byId['nav-back'].click(); }
 function next()   { byId['nav-next'].click(); }
 function chatResolve() { global.document.dispatchEvent(new CustomEvent('hegemon:next-question')); }
-function restart()     { openCalls.length = 0; botOpen = false; byId.restart.click(); }
+function restart()     { openCalls.length = 0; dismissCalls.length = 0; botLog.length = 0; botOpen = false; byId.restart.click(); }
 /* geometry mirror of the page: U=34, PAD=32, RANGE=5 → center C=202 */
 function GX(x) { return String(202 + x * 34); }
 function GY(y) { return String(202 - y * 34); }
@@ -167,6 +170,7 @@ assert('first MC-01 error does not trigger', openCalls.length === 0);
 plotPoint(2, -1); submit();                   // Q2 (-1,2) plotted swapped → MC-01
 assert('second MC-01 error triggers intervention', openCalls.length === 1);
 assert('intervention opened with code MC-01', openCalls[0] && openCalls[0].misconceptionCode === 'MC-01');
+assert('plot intervention carries taskType plot', openCalls[0] && openCalls[0].taskType === 'plot');
 
 /* ---- chat resolution displays the correct point; survives Back/Next ---- */
 chatResolve();                                // resolved on Q2, target (-1,2)
@@ -203,6 +207,41 @@ plotPoint(3, 5); submit();                    // Q2 → unclassified
 plotPoint(-1, 2); submit();                   // Q3 (1,-2) → MC-06
 assert('three unlike errors do not trigger', openCalls.length === 0);
 
+/* ---- Back/Next during an open intervention act as a chat dismissal ---- */
+restart();
+plotPoint(2, 1); submit();                    // Q1 → MC-01
+plotPoint(2, -1); submit();                   // Q2 → MC-01 → trigger, bot open, grid locked
+assert('intervention open before Back', openCalls.length === 1 && botOpen === true);
+back();                                       // dismiss + navigate to Q1
+assert('Back during intervention dismisses the chat', dismissCalls.length === 1 && botOpen === false);
+assert('Back still navigates', byId.progress.textContent === '1 of 10');
+next();                                       // → Q2: wrong submission restored, unlocked
+assert('escaped question keeps its last submission', markerAt(2, -1));
+submit();                                     // resubmit same wrong point → undo + recount
+assert('resubmitting the escaped question re-triggers', openCalls.length === 2);
+next();                                       // Next during the re-opened intervention
+assert('Next during intervention dismisses the chat', dismissCalls.length === 2 && botOpen === false);
+assert('Next still navigates', byId.progress.textContent === '3 of 10');
+assert('no dismissal when chat is closed', (back(), dismissCalls.length === 2));
+
+/* ---- Submit during a manual chat dismisses it; counting stays active ---- */
+restart();
+botOpen = true;                               // student opened Athena via the trigger button
+plotPoint(1, 2); submit();                    // Q1 correct while chat open
+assert('correct submit during manual chat dismisses it', dismissCalls.length === 1 && botOpen === false);
+assert('correct submit still advances', byId.progress.textContent === '2 of 10');
+botOpen = true;
+plotPoint(2, -1); submit();                   // Q2 (-1,2) swapped → MC-01, count 1
+assert('wrong submit during manual chat is counted, no trigger yet',
+  dismissCalls.length === 2 && openCalls.length === 0);
+assert('below-threshold wrong submit still advances', byId.progress.textContent === '3 of 10');
+botOpen = true;
+plotPoint(-2, 1); submit();                   // Q3 (1,-2) swapped → MC-01, count 2 → trigger
+assert('second like error during manual chat triggers', openCalls.length === 1);
+assert('dismiss ran immediately before the intervention opened',
+  botLog.slice(-2).join(',') === 'dismiss,open');
+assert('quiz stays on the intervened question', byId.progress.textContent === '3 of 10');
+
 /* ---- quadrant chat resolution fills correct quadrant; survives Back/Next ---- */
 restart();
 FIXED.forEach(function (t) { plotPoint(t.x, t.y); submit(); });   // Q1–Q6 correct
@@ -211,6 +250,7 @@ clickQuadrant('I'); submit();                 // Q7 TL: wrong (correct II)
 assert('first quadrant error does not trigger', openCalls.length === 0);
 clickQuadrant('I'); submit();                 // Q8 BL: wrong (correct III)
 assert('second quadrant error triggers intervention', openCalls.length === 1);
+assert('quadrant intervention carries taskType quadrant', openCalls[0].taskType === 'quadrant');
 chatResolve();                                // resolved on Q8, correct III
 assert('chat resolution fills the correct quadrant', selRect('III').attrs.fill === FILL_ON);
 assert('stale wrong selection cleared', selRect('I').attrs.fill === FILL_OFF);

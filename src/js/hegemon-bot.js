@@ -24,9 +24,10 @@
  *   HegemonBot.init({ functionUrl })
  *   HegemonBot.open({ misconceptionCode, coords, markerContext })  — starts a NEW conversation
  *   HegemonBot.isOpen()  → boolean
- *   HegemonBot.notifyCorrect()
- *   HegemonBot.notifyWrong(code)
  *   HegemonBot.reset()   — ends the current conversation (call when advancing to a new target)
+ *   HegemonBot.dismiss(note) — host-initiated close (Back/Next navigation): notes the
+ *     action in the transcript, archives, and closes WITHOUT firing 'hegemon:closed',
+ *     because the host is about to perform its own navigation
  *
  * No modal overlay: this is a docked side panel, not a dialog. The host page
  * (the assessment grid) stays interactive while the panel is open. The header
@@ -54,7 +55,6 @@
   var currentCoords = null;
   var currentMarkerContext = null;
   var escalated = false;
-  var retryUsed = false;
   var open = false;
   var hasConversation = false;
   var gridPromptActive = false;
@@ -187,8 +187,6 @@
     '.hg-msg--user{background:var(--ink,#16263d);color:#fff;',
     'align-self:flex-end;border-radius:12px 4px 12px 12px}',
     '.hg-msg--escalate{background:#fff8e6;border:1px solid #f5d87a;',
-    'align-self:flex-start;border-radius:4px 12px 12px 12px}',
-    '.hg-msg--success{background:var(--y-tint,#e3f3f1);border:1px solid var(--y,#0e9488);',
     'align-self:flex-start;border-radius:4px 12px 12px 12px}',
     '.hg-msg--action{color:var(--ink-soft,#54647a);font-style:italic;',
     'align-self:flex-end;font-size:.9rem;padding:6px 14px}',
@@ -352,12 +350,27 @@
     });
   }
 
-  function appendClosedNote() {
+  function appendClosedNote(text) {
     var note = document.createElement('div');
     note.className = 'hg-closed-note';
-    note.textContent = 'Session closed by student.';
+    note.textContent = text || 'Session closed by student.';
     transcriptEl.appendChild(note);
     transcriptEl.scrollTop = transcriptEl.scrollHeight;
+  }
+
+  /* Navigation-triggered dismissal. The host page calls this when the student
+     clicks Back/Next while a conversation is open — same meaning as telling the
+     bot to stop: the action is noted in the transcript and the raw history (so
+     the archive records it), and the conversation closes. Unlike the header X,
+     no 'hegemon:closed' event fires — the host performs its own navigation, and
+     the abandoned question stays unanswered so it recycles like any skip. */
+  function dismissForNavigation(noteText) {
+    if (!open) return;
+    if (hasConversation) {
+      appendClosedNote(noteText);
+      conversationHistory.push({ role: 'user', content: '[' + noteText + ']' });
+    }
+    resetConversation();
   }
 
   function togglePanel(viaKeyboard) {
@@ -443,7 +456,6 @@
     currentCode = null;
     currentCoords = null;
     escalated = false;
-    retryUsed = false;
     hasConversation = false;
     gridPromptActive = false;
     pendingGridCoords = null;
@@ -665,7 +677,6 @@
       var displayText = 'selected Quadrant ' + q + ' on the grid';
       pendingQuadrantSelection = null;
       quadrantPromptActive = false;
-      retryUsed = true;
       hideGridSubmitButton();
       document.dispatchEvent(new CustomEvent('hegemon:quadrant-done'));
       conversationHistory.push({ role: 'user', content: displayText });
@@ -676,7 +687,6 @@
       var displayText = 'selected (' + coords.x + ', ' + coords.y + ') on the grid';
       pendingGridCoords = null;
       gridPromptActive = false;
-      retryUsed = true;
       hideGridSubmitButton();
       document.dispatchEvent(new CustomEvent('hegemon:grid-done'));
       conversationHistory.push({ role: 'user', content: displayText });
@@ -713,7 +723,6 @@
     currentMarkerContext = params.markerContext || null;
     currentTaskType = params.taskType || null;
     escalated = false;
-    retryUsed = false;
     actionsEl.innerHTML = '';
     if (params.questionLabel && transcriptEl.children.length > 0) {
       var sep = document.createElement('div');
@@ -740,7 +749,6 @@
       hasConversation = true;
       conversationHistory = [];
       escalated = false;
-      retryUsed = false;
       transcriptEl.innerHTML = '';
       actionsEl.innerHTML = '';
       showPanel();
@@ -766,7 +774,6 @@
       hasConversation = true;
       conversationHistory = [];
       escalated = false;
-      retryUsed = false;
       actionsEl.innerHTML = '';
       transcriptEl.innerHTML = '';
       showPanel();
@@ -798,7 +805,6 @@
     currentMarkerContext = markerCtx || null;
     currentTaskType = null;
     escalated = false;
-    retryUsed = false;
     actionsEl.innerHTML = '';
     if (transcriptEl.children.length > 0) {
       var sep = document.createElement('div');
@@ -928,34 +934,6 @@
     transcriptEl.scrollTop = transcriptEl.scrollHeight;
   }
 
-  function notifyCorrect() {
-    if (!open) return;
-    appendMessage('Nice work! Give the next one a try.', 'success');
-    hideGridSubmitButton();
-    setInputEnabled(false);
-    setTimeout(function() {
-      resetConversation();
-      document.dispatchEvent(new CustomEvent('hegemon:advance'));
-    }, 2200);
-  }
-
-  function notifyWrong(code) {
-    if (!open) return;
-    if (retryUsed) {
-      // Student already failed a grid demonstration — escalate without another Claude call.
-      appendMessage('You\'ve worked really hard on this one. This is a good time to ask your teacher for help.', 'escalate');
-      escalated = true;
-      setInputEnabled(false);
-      return;
-    }
-    var noteText = '[Student plotted the point again' +
-      (currentCoords ? ' — target was (' + currentCoords.targetX + ', ' + currentCoords.targetY + ').' : '.') +
-      ']';
-    conversationHistory.push({ role: 'user', content: noteText });
-    currentCode = code || currentCode;
-    fetchResponse(null);
-  }
-
   function clearHistory() {
     resetConversation();
     transcriptEl.innerHTML = '';
@@ -1012,13 +990,12 @@
     init: init,
     open: openWithParams,
     close: hidePanel,
+    dismiss: dismissForNavigation,
     reset: resetConversation,
     clearHistory: clearHistory,
     hasHistory: hasHistory,
     downloadChat: downloadChat,
     openFocus: openWithFocus,
-    isOpen: function () { return open; },
-    notifyCorrect: notifyCorrect,
-    notifyWrong: notifyWrong
+    isOpen: function () { return open; }
   };
 }));

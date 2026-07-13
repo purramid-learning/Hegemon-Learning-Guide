@@ -660,12 +660,6 @@
 
     var isCorrect = (record.plottedX===record.targetX && record.plottedY===record.targetY);
 
-    if (HegemonBot.isOpen()){
-      if (isCorrect) HegemonBot.notifyCorrect();
-      else           HegemonBot.notifyWrong(HegemonDetect.detectMisconception(record));
-      return;
-    }
-
     undoCountedContribution(idx);
 
     if (!isCorrect){
@@ -684,6 +678,7 @@
             coords: { targetX:record.targetX, targetY:record.targetY,
                       plottedX:record.plottedX, plottedY:record.plottedY },
             markerContext: HegemonMarkers.snapshot(),
+            taskType: "plot",
             questionLabel: 'Question ' + (idx + 1)
           });
         }
@@ -699,12 +694,6 @@
 
 
     var isCorrect = (named === q.correct);
-
-    if (HegemonBot.isOpen()){
-      if (isCorrect) HegemonBot.notifyCorrect();
-      else           HegemonBot.notifyWrong(HegemonDetect.detectQuadrantError(q.corner, named));
-      return;
-    }
 
     undoCountedContribution(idx);
 
@@ -736,6 +725,14 @@
 
   btnSubmit.addEventListener("click", function(){
     if (locked) return;
+    // Same dismissal rule as Back/Next: every quiz action closes an open chat.
+    // Only a manual conversation can coexist with an enabled Submit (interventions
+    // lock the grid), so this always dismisses a manual chat — and because dismiss,
+    // counting, and a possible trigger all run in this same synchronous handler,
+    // a submission that completes an error pair reopens the panel before the
+    // browser repaints: the window never visibly closes, its content just
+    // transitions to the intervention.
+    if (HegemonBot.isOpen()) HegemonBot.dismiss('Student submitted an answer.');
     var q = QUESTIONS[idx];
     if (q.type === "plot"){
       if (!placed) return;
@@ -755,6 +752,11 @@
   /* ---- Back button ---- */
   btnBack.addEventListener("click", function(){
     if (idx === 0) return;
+    // Navigating away while a conversation is open dismisses it, same as telling
+    // the bot to stop: the action is noted in the transcript, the panel closes,
+    // and the navigation proceeds. The question stays unanswered, so it recycles;
+    // resubmitting it later re-arms its error group (see undoCountedContribution).
+    if (HegemonBot.isOpen()) HegemonBot.dismiss('Student went back to the previous question.');
     // Save current position's state
     if (QUESTIONS[idx].type === "plot") { placedByIdx[idx] = placed; }
     else                                 { selectedByIdx[idx] = selectedQuadrant; }
@@ -777,6 +779,8 @@
   /* ---- Next button (skip) ---- */
   btnNext.addEventListener("click", function(){
     if (idx >= QUESTIONS.length - 1) return;
+    // Same dismissal rule as Back — see the note there.
+    if (HegemonBot.isOpen()) HegemonBot.dismiss('Student moved on to the next question.');
     if (QUESTIONS[idx].type === "plot") { placedByIdx[idx] = placed; }
     else                                 { selectedByIdx[idx] = selectedQuadrant; }
     idx++;
@@ -791,11 +795,6 @@
       placed = null;
     }
     loadTarget();
-  });
-
-  /* ---- Hegemon-driven advancement ---- */
-  document.addEventListener('hegemon:advance', function(){
-    advance();
   });
 
   /* When Hegemon resolves via chat ([NEXT_QUESTION]), the student has demonstrated
