@@ -21,6 +21,3 @@ Option 1 and option 2 are both AI transformers. They use the architecture differ
 * An encoder (e.g., BERT) reads the whole input and produces rich meaning representation. It's good for classification.
 
 1. ten Broeke, N., Hofman, A. D., Kruis, J., de Mooij, S. M., & van der Maas, H. (2022). Predicting and reducing quitting in online learning. Open Science Framework.
-
-
-Liujing Ren, Eileen Murphy, Manat MacLeod, Prashant Patel, Angie McCallister, Tina Austin, Jennifer Selby
