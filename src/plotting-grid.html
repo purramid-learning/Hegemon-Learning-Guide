@@ -373,6 +373,31 @@
   var ERROR_GROUP = { 'MC-03':'MC-03/08', 'MC-08':'MC-03/08' };
   function errorGroupFor(code){ return ERROR_GROUP[code] || code; }
 
+  /* Undo a question's prior contribution to the error-group tally. Called before
+     re-counting a resubmission (Back + revise), so revising an answer doesn't
+     double-count it. NOT called on plain Back/Next navigation — passing through
+     a question without resubmitting must never erase its recorded contribution. */
+  function undoCountedContribution(questionIdx){
+    var countedGroup = mcCountedAtIdx[questionIdx];
+    if (!countedGroup) return;
+    delete mcCountedAtIdx[questionIdx];
+    mcErrorCount[countedGroup] = Math.max(0, (mcErrorCount[countedGroup]||0) - 1);
+    if (mcTriggered[countedGroup] && mcErrorCount[countedGroup] < 2){
+      delete mcTriggered[countedGroup];
+      currentTriggeredGroup = null;
+    }
+  }
+
+  /* Record a submission, replacing any prior record for the same question
+     (Back + resubmit) instead of appending — keeps submissions.length in sync
+     with the number of distinct questions answered. */
+  function recordSubmission(record){
+    var existingIdx = submissions.findIndex(function(s){ return s.index === record.index; });
+    if (existingIdx !== -1) submissions[existingIdx] = record;
+    else submissions.push(record);
+    window.hegemonSubmissions = submissions;
+  }
+
   /* ---- bot init ---- */
   HegemonBot.init({
     functionUrl: 'https://us-central1-hegemon-learning-guide.cloudfunctions.net/scaffold',
@@ -629,8 +654,7 @@
      SUBMIT
   ---------------------------------------------------------------- */
   function recordPlotSubmission(record){
-    submissions.push(record);
-    window.hegemonSubmissions = submissions;
+    recordSubmission(record);
     console.log("[hegemon] plot submission", record);
 
 
@@ -642,10 +666,14 @@
       return;
     }
 
+    undoCountedContribution(idx);
+
     if (!isCorrect){
       var code = HegemonDetect.detectMisconception(record);
-      var group = code ? errorGroupFor(code) : null;
-      if (group && !mcTriggered[group] && !mcCountedAtIdx[idx]){
+      // Unclassified wrong answers still count toward the threshold — Claude falls back
+      // to Socratic probing without asserting a misconception.
+      var group = code ? errorGroupFor(code) : 'unclassified';
+      if (!mcTriggered[group]){
         mcCountedAtIdx[idx] = group;
         mcErrorCount[group] = (mcErrorCount[group] || 0) + 1;
         if (mcErrorCount[group] >= 2){
@@ -666,8 +694,7 @@
   function recordQuadrantSubmission(q, named){
     var record = { index:idx, questionType:"quadrant",
       targetX:q.x, targetY:q.y, corner:q.corner, namedQuadrant:named, correct:q.correct };
-    submissions.push(record);
-    window.hegemonSubmissions = submissions;
+    recordSubmission(record);
     console.log("[hegemon] quadrant submission", record);
 
 
@@ -679,11 +706,13 @@
       return;
     }
 
+    undoCountedContribution(idx);
+
     if (!isCorrect){
       var code = HegemonDetect.detectQuadrantError(q.corner, named);
       // Keep the two question pairs independent: Q7+Q8 (name format) and Q9+Q10 (coord format)
       var group = q.format === 'coord' ? 'MC-04-coord' : 'MC-04-name';
-      if (!mcTriggered[group] && !mcCountedAtIdx[idx]){
+      if (!mcTriggered[group]){
         mcCountedAtIdx[idx] = group;
         mcErrorCount[group] = (mcErrorCount[group] || 0) + 1;
         if (mcErrorCount[group] >= 2){
@@ -730,15 +759,8 @@
     if (QUESTIONS[idx].type === "plot") { placedByIdx[idx] = placed; }
     else                                 { selectedByIdx[idx] = selectedQuadrant; }
 
-    var countedGroup = mcCountedAtIdx[idx];
-    if (countedGroup){
-      delete mcCountedAtIdx[idx];
-      mcErrorCount[countedGroup] = Math.max(0, (mcErrorCount[countedGroup]||0) - 1);
-      if (mcTriggered[countedGroup] && mcErrorCount[countedGroup] < 2){
-        delete mcTriggered[countedGroup];
-        currentTriggeredGroup = null;
-      }
-    }
+    // A question's error-group contribution is only undone on an actual resubmission
+    // (see undoCountedContribution), not on plain Back/Next navigation.
 
     idx--;
     // Restore saved state for destination question
@@ -833,22 +855,13 @@
     }
   });
 
-  /* ---- Panel closed — unlock if quiz is still locked from a failed intervention ---- */
+  /* ---- Panel closed via X button ---- */
   document.addEventListener('hegemon:closed', function(){
+    // locked=true means the student submitted a wrong answer that triggered the panel.
+    // Advance rather than unlock in place — marks the question submitted so it won't
+    // reappear via findNextTarget. Student can click Back to revisit and retry.
     if (!locked) return;
-    locked = false;
-    svg.classList.remove('locked');
-    if (QUESTIONS[idx].type === 'plot') {
-      placed = null;
-      marker.style.opacity = 0;
-      btnSubmit.disabled = true;
-      elStatus.textContent = 'No point placed yet.';
-    } else {
-      selectedQuadrant = null;
-      clearQuadrantSelection();
-      btnSubmit.disabled = true;
-      elStatus.textContent = 'No quadrant selected yet.';
-    }
+    advance();
   });
 
   /* ---- Finish / restart ---- */
