@@ -5,7 +5,7 @@
  * Cases are built on the six locked targets:
  *   (3,2) (-4,3) (2,-5) (0,4) (-3,0) (-2,-3)
  */
-var D = require('./misconception-detection.js');
+var D = require('../src/js/misconception-detection.js');
 var detect = D.detectMisconception;
 
 var pass = 0, fail = 0;

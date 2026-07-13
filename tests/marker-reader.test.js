@@ -6,7 +6,7 @@
   anchoring, and sessionStorage behavior are DOM-bound and are verified with
   Playwright, not here.
 */
-var M = require("./marker-reader.js");
+var M = require("../src/js/marker-reader.js");
 
 var pass = 0, fail = 0;
 function eq(actual, expected, name) {
