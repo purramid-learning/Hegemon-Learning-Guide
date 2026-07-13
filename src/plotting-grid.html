@@ -779,12 +779,17 @@
     if (idx >= QUESTIONS.length - 1) return;
     if (QUESTIONS[idx].type === "plot") { placedByIdx[idx] = placed; }
     else                                 { selectedByIdx[idx] = selectedQuadrant; }
-    var nextIdx = idx + 1;
-    delete placedByIdx[nextIdx];
-    delete selectedByIdx[nextIdx];
-    placed = null;
-    selectedQuadrant = null;
-    idx = nextIdx;
+    idx++;
+    // Restore the destination's saved state, mirroring Back — Next must not wipe
+    // an already-answered question's display. Only advance() clears destination
+    // state, and only for questions that are still unanswered.
+    if (QUESTIONS[idx].type === "plot"){
+      placed = placedByIdx[idx] || null;
+      selectedQuadrant = null;
+    } else {
+      selectedQuadrant = selectedByIdx[idx] || null;
+      placed = null;
+    }
     loadTarget();
   });
 
@@ -793,19 +798,29 @@
     advance();
   });
 
-  /* When Hegemon resolves via chat ([NEXT_QUESTION]) rather than a re-submission,
-     mark as answered but do NOT save placed/selectedQuadrant — they reflect the
-     original wrong submission. On Back navigation this question shows no placed point,
-     which is accurate (the student never correctly placed one). */
+  /* When Hegemon resolves via chat ([NEXT_QUESTION]), the student has demonstrated
+     the correct answer, so the resolved answer equals the target. Display and save
+     it as if the student had answered correctly on the main page: the point (or
+     quadrant fill) stays on the grid, and Back navigation restores it. The original
+     wrong submission stays in the submissions record — the transcript documents
+     the intervention. */
   document.addEventListener('hegemon:next-question', function(){
-    if (!submittedIdxs[idx]) {
-      submittedIdxs[idx] = true;
-      placed = null;
-      marker.style.opacity = 0;
-      selectedQuadrant = null;
+    if (submittedIdxs[idx]) return;
+    submittedIdxs[idx] = true;
+    var q = QUESTIONS[idx];
+    if (q.type === "plot"){
+      placed = { x:q.x, y:q.y };
+      placedByIdx[idx] = placed;
+      marker.setAttribute("cx", X(q.x));
+      marker.setAttribute("cy", Y(q.y));
+      marker.style.opacity = 1;
+    } else {
+      selectedQuadrant = q.correct;
+      selectedByIdx[idx] = q.correct;
       clearQuadrantSelection();
-      if (findNextTarget(idx) === -1) { finish(); }
+      qSelRects[q.correct].setAttribute("fill","rgba(47,109,240,0.6)");
     }
+    if (findNextTarget(idx) === -1) { finish(); }
   });
 
   /* ---- Grid sub-answer mode (Hegemon [GRID_PROMPT]) ---- */
