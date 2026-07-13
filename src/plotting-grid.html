@@ -691,7 +691,11 @@
           currentTriggeredGroup = group;
           HegemonBot.open({
             misconceptionCode: code,
-            coords: { targetX:q.x, targetY:q.y, namedQuadrant:named, correctQuadrant:q.correct },
+            // Name-recall questions show no coordinate; omit it so the bot scaffolds
+            // quadrant numbering rather than coordinate-sign reasoning.
+            coords: q.format === 'coord'
+              ? { targetX:q.x, targetY:q.y, namedQuadrant:named, correctQuadrant:q.correct }
+              : { namedQuadrant:named, correctQuadrant:q.correct },
             markerContext: HegemonMarkers.snapshot(),
             taskType: "quadrant",
             questionLabel: 'Question ' + (idx + 1)

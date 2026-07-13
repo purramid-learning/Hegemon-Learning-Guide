@@ -57,3 +57,12 @@ Student was asked to **label the quadrants** and is stuck. Rungs delivered one p
 > 4. You've got the rule now — **where do III and IV land?**
 
 Every rung states a convention and makes the student supply *which corner is which*. Start and direction are addressed separately (rule 5), and the bot hands off the moment the pattern is established (rule 4). Direction is framed through **sign changes**, not "counterclockwise" — the assessment measures the sign→quadrant link, so the feedback uses the same concept.
+
+### Two quadrant formats
+
+Quadrant tasks arrive in two shapes, distinguished by whether the payload carries a **coordinate**:
+
+- **Name recall** (no coordinate): the student was given a quadrant *number* and asked to click its location. The assessed item is *where* the quadrant sits — the number was in the prompt, only the corner is withheld. Scaffold via the numbering frame above (anchor Quadrant I by the all-positive rule, then reason one sign-change per transition). Never reference a coordinate — the student never saw one.
+- **Coordinate identification** (coordinate present): the student was shown a point and asked *which* quadrant contains it. Scaffold from the coordinate's signs — x's sign gives left/right, y's sign gives up/down — one coordinate per turn.
+
+The absence of a coordinate in a quadrant task **is** the signal for name recall; the client omits it deliberately for that format.
