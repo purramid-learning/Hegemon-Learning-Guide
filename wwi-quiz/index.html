@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Great War — AP Practice Examination</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EFE9DB;
+    --paper-deep:#E5DDC9;
+    --ink:#2B2A24;
+    --ink-soft:#4A4930;
+    --olive:#5C5B38;
+    --brass:#8C6D3F;
+    --poppy:#A23327;
+    --field-green:#3F5A3C;
+    --rule:#B7AD93;
+    --focus:#1F3D5C;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{background:var(--paper-deep)}
+  body{
+    font-family:Georgia,'Times New Roman',serif;
+    color:var(--ink);
+    background:
+      repeating-linear-gradient(0deg, rgba(43,42,36,.025) 0 1px, transparent 1px 3px),
+      var(--paper);
+    min-height:100vh;
+    line-height:1.55;
+    padding:2rem 1rem 4rem;
+  }
+  .sheet{max-width:740px;margin:0 auto}
+  .masthead{
+    text-align:center;
+    border-top:3px double var(--ink);
+    border-bottom:3px double var(--ink);
+    padding:1.1rem .5rem 1rem;
+    margin-bottom:1.75rem;
+  }
+  .masthead .eyebrow{
+    font-family:'Special Elite',monospace;
+    font-size:.78rem;
+    letter-spacing:.25em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+  .masthead h1{
+    font-family:'Oswald',sans-serif;
+    font-weight:600;
+    font-size:clamp(1.7rem,5vw,2.6rem);
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    margin:.25rem 0 .15rem;
+  }
+  .masthead .sub{
+    font-style:italic;
+    color:var(--ink-soft);
+    font-size:.95rem;
+  }
+  /* 1914 -> 1918 progress line */
+  .campaign{
+    display:flex;align-items:center;gap:.6rem;
+    margin:0 auto 1.5rem;max-width:640px;
+    font-family:'Oswald',sans-serif;font-size:.85rem;letter-spacing:.08em;
+    color:var(--ink-soft);
+  }
+  .campaign .track{
+    position:relative;flex:1;height:10px;
+  }
+  .campaign .track .base{
+    position:absolute;inset:4px 0;height:2px;background:var(--rule);
+  }
+  .campaign .track .fill{
+    position:absolute;top:4px;left:0;height:2px;background:var(--olive);
+    transition:width .3s ease;
+  }
+  @media (prefers-reduced-motion:reduce){
+    .campaign .track .fill{transition:none}
+  }
+  .campaign .track .ticks{position:absolute;inset:0;display:flex;justify-content:space-between}
+  .campaign .track .ticks span{width:1px;height:10px;background:var(--rule)}
+  .memo{
+    background:rgba(255,253,246,.65);
+    border:1px solid var(--rule);
+    outline:1px solid var(--rule);
+    outline-offset:3px;
+    padding:1.6rem 1.6rem 1.4rem;
+  }
+  .memo-label{
+    font-family:'Special Elite',monospace;
+    font-size:.75rem;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--ink-soft);
+    display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+    border-bottom:1px solid var(--rule);
+    padding-bottom:.6rem;margin-bottom:1.1rem;
+  }
+  fieldset{border:0}
+  legend.question{
+    font-size:1.15rem;line-height:1.5;margin-bottom:1.1rem;font-weight:normal;
+  }
+  .options{list-style:none;display:grid;gap:.55rem}
+  .options label{
+    display:flex;gap:.7rem;align-items:flex-start;
+    border:1px solid var(--rule);
+    background:rgba(255,255,255,.35);
+    padding:.65rem .8rem;
+    cursor:pointer;
+  }
+  .options label:hover{border-color:var(--olive)}
+  .options input{margin-top:.3rem;accent-color:var(--olive);flex:none}
+  .options input:focus-visible + span, .options label:has(input:focus-visible){
+    outline:3px solid var(--focus);outline-offset:2px;
+  }
+  .options label:has(input:checked){
+    border-color:var(--olive);
+    background:rgba(92,91,56,.12);
+  }
+  .nav{
+    display:flex;justify-content:space-between;align-items:center;
+    margin-top:1.4rem;gap:.75rem;flex-wrap:wrap;
+  }
+  button{
+    font-family:'Oswald',sans-serif;
+    font-size:.95rem;letter-spacing:.1em;text-transform:uppercase;
+    padding:.55rem 1.3rem;
+    background:var(--ink);color:var(--paper);
+    border:1px solid var(--ink);
+    cursor:pointer;
+  }
+  button.secondary{background:transparent;color:var(--ink)}
+  button:disabled{opacity:.4;cursor:default}
+  button:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+  .note{font-family:'Special Elite',monospace;font-size:.78rem;color:var(--ink-soft);margin-top:.9rem}
+  /* Results */
+  .score-line{
+    font-family:'Oswald',sans-serif;font-size:1.5rem;letter-spacing:.06em;margin:.4rem 0 .2rem;
+  }
+  .verdict{font-style:italic;color:var(--ink-soft);margin-bottom:1rem}
+  .review-item{
+    border-top:1px solid var(--rule);
+    padding:1.1rem 0;
+  }
+  .review-item p.stem{margin-bottom:.5rem}
+  .tag{
+    font-family:'Special Elite',monospace;font-size:.72rem;letter-spacing:.15em;text-transform:uppercase;
+  }
+  .yours{color:var(--poppy)}
+  .correct{color:var(--field-green)}
+  .why{font-size:.95rem;color:var(--ink-soft);margin-top:.4rem;font-style:italic}
+  .hidden{display:none}
+  .center{text-align:center}
+  .start-copy{max-width:56ch;margin:0 auto 1.3rem}
+  .visually-hidden{
+    position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="masthead">
+    <div class="eyebrow">Form 25-A &nbsp;·&nbsp; Examinations Branch</div>
+    <h1>The Great War</h1>
+    <div class="sub">A practice examination for AP history students · 25 questions</div>
+  </header>
+
+  <div class="campaign" id="campaign" aria-hidden="true">
+    <span>1914</span>
+    <div class="track">
+      <div class="base"></div>
+      <div class="fill" id="progressFill" style="width:0%"></div>
+      <div class="ticks" id="ticks"></div>
+    </div>
+    <span>1918</span>
+  </div>
+
+  <!-- Start screen -->
+  <section id="startScreen" class="memo center">
+    <p class="start-copy">Twenty-five questions on the First World War: its causes, campaigns, home
+    fronts, and consequences. Each question is drawn at random from a larger pool, and the order of
+    the answer choices changes every time, so no two sittings are quite the same. You may move back
+    and forth between questions before submitting. Your score and a review of anything you missed
+    appear at the end.</p>
+    <button id="startBtn">Begin examination</button>
+  </section>
+
+  <!-- Quiz screen -->
+  <section id="quizScreen" class="memo hidden">
+    <div class="memo-label">
+      <span id="qCounter">Question 1 of 25</span>
+      <span id="qSection">—</span>
+    </div>
+    <form id="qForm">
+      <fieldset>
+        <legend class="question" id="qStem"></legend>
+        <ul class="options" id="qOptions"></ul>
+      </fieldset>
+    </form>
+    <div class="nav">
+      <button type="button" class="secondary" id="backBtn">Back</button>
+      <span class="note" id="answeredNote"></span>
+      <button type="button" id="nextBtn">Next</button>
+    </div>
+  </section>
+
+  <!-- Results screen -->
+  <section id="resultsScreen" class="memo hidden">
+    <div class="memo-label"><span>After-action report</span><span id="resultDate"></span></div>
+    <p class="score-line" id="scoreLine" tabindex="-1"></p>
+    <p class="verdict" id="verdict"></p>
+    <div id="reviewBlock">
+      <h2 class="tag" style="margin-bottom:.3rem">Review of missed questions</h2>
+      <div id="reviewList"></div>
+    </div>
+    <div class="nav">
+      <button type="button" id="retakeBtn">Retake with new questions</button>
+    </div>
+  </section>
+
+  <p class="visually-hidden" role="status" aria-live="polite" id="liveRegion"></p>
+</div>
+
+<script>
+"use strict";
+
+/*
+ * QUESTION BANK
+ * 25 pools × 4 questions = 100 questions.
+ * Each pool shares one fixed set of four answer options. Every option in the
+ * set is the correct answer to exactly one of the pool's four questions, so
+ * every distracter a student sees is a genuine answer elsewhere in the pool.
+ * `a` is the index of the correct option within the pool's option set.
+ */
+const POOLS = [
+{
+  section:"Long-term causes",
+  options:["Militarism","The alliance system","Imperialism","Nationalism"],
+  questions:[
+    {q:"The Anglo-German naval race and the widespread glorification of armed strength before 1914 best illustrate which long-term cause of the war?",a:0,
+     why:"Competitive arms buildup and a culture that celebrated military power are the defining features of militarism."},
+    {q:"Which long-term cause best explains how a dispute between Austria-Hungary and Serbia escalated so quickly into a general European war?",a:1,
+     why:"Interlocking defensive commitments pulled Russia, Germany, France, and Britain into what began as a regional quarrel."},
+    {q:"The Moroccan Crises of 1905 and 1911, in which Germany challenged French claims in North Africa, heightened prewar tensions rooted in which long-term cause?",a:2,
+     why:"The crises grew out of great-power competition for overseas colonies and influence — imperial rivalry."},
+    {q:"Pan-Slavism in the Balkans and the ambitions of groups such as the Black Hand reflected which long-term cause of the war?",a:3,
+     why:"Both were expressions of ethnic nationalism — the drive of Slavic peoples for unity and independence from imperial rule."}
+  ]
+},
+{
+  section:"The July Crisis",
+  options:["The assassination of Archduke Franz Ferdinand","Austria-Hungary's ultimatum to Serbia","Russia's general mobilization","Germany's invasion of Belgium"],
+  questions:[
+    {q:"Which event of the summer of 1914 served as the immediate spark that set the road to war in motion?",a:0,
+     why:"Gavrilo Princip's killing of the Austrian heir in Sarajevo triggered the chain of decisions that followed."},
+    {q:"Which action was deliberately drafted with demands so severe that its recipient was expected to reject it?",a:1,
+     why:"Vienna designed the ultimatum's terms to be unacceptable, providing a pretext for war against Serbia."},
+    {q:"Which step, taken in support of Serbia, prompted Germany to declare war on its eastern neighbor?",a:2,
+     why:"Once Russia mobilized its full army, German war planning treated conflict as unavoidable and Berlin declared war."},
+    {q:"Which action violated an 1839 neutrality guarantee and brought Great Britain into the war?",a:3,
+     why:"Britain had guaranteed Belgian neutrality by treaty; Germany's march through Belgium gave London its cause for war."}
+  ]
+},
+{
+  section:"The Central Powers",
+  options:["Germany","Austria-Hungary","The Ottoman Empire","Bulgaria"],
+  questions:[
+    {q:"Which Central Power issued the so-called 'blank check,' promising unconditional support to its ally in July 1914?",a:0,
+     why:"Germany assured Austria-Hungary of full backing against Serbia, emboldening Vienna's hard line."},
+    {q:"Which Central Power's determination to punish Serbia after the Sarajevo assassination began the slide into general war?",a:1,
+     why:"Austria-Hungary saw the assassination as a chance to crush Serbian nationalism once and for all."},
+    {q:"Which Central Power's entry into the war closed the straits linking the Mediterranean and Black Seas, cutting a vital Allied supply route to Russia?",a:2,
+     why:"Ottoman control of the Dardanelles and Bosporus severed the easiest route for supplying Russia."},
+    {q:"Which Central Power joined the war in 1915 chiefly to seize Macedonian territory from Serbia?",a:3,
+     why:"Bulgaria, still smarting from the Second Balkan War, entered on the Central Powers' side to take Macedonia."}
+  ]
+},
+{
+  section:"The Allied Powers",
+  options:["France","Russia","Great Britain","Italy"],
+  questions:[
+    {q:"Which Allied power bore the greatest share of fighting on the Western Front and sought to recover Alsace-Lorraine?",a:0,
+     why:"The Western Front ran across French soil, and reclaiming the provinces lost in 1871 was a central French war aim."},
+    {q:"Which Allied power mobilized in defense of Serbia, casting itself as the protector of the Slavic peoples?",a:1,
+     why:"Russia's self-appointed role as guardian of the Slavs made abandoning Serbia politically unthinkable."},
+    {q:"Which Allied power entered the war in direct response to the violation of Belgian neutrality?",a:2,
+     why:"Britain declared war when Germany refused to withdraw from Belgium, whose neutrality Britain had guaranteed."},
+    {q:"Which Allied power abandoned its former alliance partners and entered the war in 1915 after receiving secret territorial promises?",a:3,
+     why:"Italy left the Triple Alliance and joined the Allies under the Treaty of London, which promised Austrian lands."}
+  ]
+},
+{
+  section:"War plans and doctrine",
+  options:["The Schlieffen Plan","Plan XVII","A strategy of attrition","The 'cult of the offensive'"],
+  questions:[
+    {q:"Which prewar military concept called for defeating France quickly by sweeping through Belgium before turning against Russia?",a:0,
+     why:"The Schlieffen Plan gambled on knocking out France in weeks so Germany could avoid a prolonged two-front war."},
+    {q:"Which prewar military concept committed French forces to an immediate offensive thrust into Alsace-Lorraine?",a:1,
+     why:"Plan XVII staked everything on a rapid attack to recover the lost provinces — and collapsed against German defenses."},
+    {q:"Which approach, adopted by Falkenhayn at Verdun, sought to 'bleed France white' rather than to capture ground?",a:2,
+     why:"Attrition aimed to win by inflicting unsustainable losses, not by taking territory — Verdun was its clearest test."},
+    {q:"Which widely shared prewar belief held that fighting spirit and constant attack would overcome modern defensive firepower?",a:3,
+     why:"The 'cult of the offensive' pervaded European staffs and helped produce catastrophic frontal assaults in 1914."}
+  ]
+},
+{
+  section:"The Western Front",
+  options:["The First Battle of the Marne","The Battle of Verdun","The Battle of the Somme","The Battle of Passchendaele"],
+  questions:[
+    {q:"Which battle halted the initial German advance toward Paris and ended hopes of a short war in the west?",a:0,
+     why:"The Allied stand on the Marne in 1914 wrecked the Schlieffen timetable and led to the 'race to the sea' and trench deadlock."},
+    {q:"Which months-long battle became a symbol of French endurance, summed up in the vow 'They shall not pass'?",a:1,
+     why:"Verdun's fortress city held for ten months and became the defining test of French national resolve."},
+    {q:"Which offensive, launched partly to relieve pressure on the French elsewhere, cost Britain roughly 60,000 casualties on its first day?",a:2,
+     why:"The first day of the Somme remains the bloodiest single day in British military history."},
+    {q:"Which offensive in Flanders became infamous for fighting in liquid mud that swallowed men, animals, and guns?",a:3,
+     why:"Rain and shattered drainage turned the Passchendaele battlefield into a deadly swamp in 1917."}
+  ]
+},
+{
+  section:"Other fronts",
+  options:["The Battle of Tannenberg","The Gallipoli Campaign","The Battle of Caporetto","The Brusilov Offensive"],
+  questions:[
+    {q:"Which early battle on the Eastern Front destroyed an invading Russian army and made national heroes of Hindenburg and Ludendorff?",a:0,
+     why:"At Tannenberg, German forces encircled and annihilated Russia's Second Army in the opening weeks of the war."},
+    {q:"Which Allied campaign attempted to knock the Ottoman Empire out of the war by seizing the straits leading to Constantinople?",a:1,
+     why:"The Gallipoli landings aimed to force the Dardanelles, open a route to Russia, and topple the Ottomans — and failed."},
+    {q:"Which defeat shattered the Italian lines and forced the Allies to rush reinforcements to prop up a collapsing front?",a:2,
+     why:"The Austro-German breakthrough at Caporetto in 1917 drove the Italians back some seventy miles."},
+    {q:"Which Russian operation inflicted enormous losses on Austria-Hungary but exhausted the attacking armies as well?",a:3,
+     why:"Brusilov's 1916 offensive nearly broke Austria-Hungary yet burned through Russian manpower and morale."}
+  ]
+},
+{
+  section:"New technology",
+  options:["Poison gas","Tanks","Military aircraft","Machine guns"],
+  questions:[
+    {q:"Which weapon, first used on a large scale near Ypres, was intended to break the trench deadlock by making enemy positions unlivable?",a:0,
+     why:"Germany released chlorine gas at Ypres in 1915, opening a new and terrifying dimension of chemical warfare."},
+    {q:"Which innovation, introduced by the British on the Somme, was designed specifically to cross trenches and crush barbed wire?",a:1,
+     why:"The tank was engineered to solve the exact obstacles — wire, trenches, machine-gun fire — that stalled infantry."},
+    {q:"Which technology evolved over the course of the war from unarmed reconnaissance into dogfighting and strategic bombing?",a:2,
+     why:"Aircraft began as artillery spotters and scouts, then rapidly developed into fighters and bombers."},
+    {q:"Which weapon, firing hundreds of rounds per minute, made massed infantry assaults across open ground effectively suicidal?",a:3,
+     why:"The machine gun, paired with wire and artillery, gave defenders an overwhelming advantage and froze the front."}
+  ]
+},
+{
+  section:"Trench warfare",
+  options:["No-man's-land","Going 'over the top'","The creeping barrage","Shell shock"],
+  questions:[
+    {q:"Which term described the cratered, wire-strewn ground that separated the opposing trench lines?",a:0,
+     why:"No-man's-land was the contested killing zone between the trenches, often only a few hundred yards wide."},
+    {q:"Which phrase referred to infantry climbing out of their own trenches to assault enemy positions?",a:1,
+     why:"'Over the top' meant leaving the trench's protection to advance into open fire — the most dreaded order of the war."},
+    {q:"Which tactic timed a slowly advancing curtain of artillery fire to move just ahead of attacking infantry?",a:2,
+     why:"The creeping barrage was meant to suppress defenders until the moment attackers reached their line."},
+    {q:"Which term did contemporaries use for the psychological collapse suffered by soldiers under prolonged bombardment?",a:3,
+     why:"'Shell shock' named what would now be understood as combat trauma; armies struggled to treat or even acknowledge it."}
+  ]
+},
+{
+  section:"The war at sea",
+  options:["Unrestricted submarine warfare","The British naval blockade","The convoy system","The Battle of Jutland"],
+  questions:[
+    {q:"Which policy involved sinking merchant and passenger ships without warning inside declared war zones?",a:0,
+     why:"Unrestricted submarine warfare abandoned the customary rules of stopping and searching ships before attack."},
+    {q:"Which measure slowly starved the Central Powers of food and raw materials over the course of the war?",a:1,
+     why:"Britain's distant blockade of the North Sea strangled German imports, contributing to severe civilian hunger."},
+    {q:"Which countermeasure grouped merchant vessels under warship escort and sharply reduced Allied shipping losses?",a:2,
+     why:"Convoys, adopted in 1917, cut sinkings dramatically and blunted the U-boat threat to Britain's supply lines."},
+    {q:"Which clash was the war's only full-scale battle between the main fleets, after which the German surface navy largely stayed in port?",a:3,
+     why:"Jutland was tactically ambiguous but strategically decisive: the High Seas Fleet never seriously challenged Britain again."}
+  ]
+},
+{
+  section:"American entry",
+  options:["The Zimmermann Telegram","The sinking of the Lusitania","The Sussex Pledge","American loans to the Allies"],
+  questions:[
+    {q:"Which intercepted message proposed a German-Mexican alliance and outraged American opinion when it was published?",a:0,
+     why:"The telegram offered Mexico the recovery of Texas, New Mexico, and Arizona — and made German hostility unmistakable."},
+    {q:"Which incident killed 128 Americans at sea and turned public opinion in the United States sharply against Germany?",a:1,
+     why:"A U-boat sank the British liner Lusitania in 1915, and the American deaths became a rallying point against Germany."},
+    {q:"Which German promise to spare passenger ships temporarily eased tensions with the United States?",a:2,
+     why:"After the attack on the Sussex, Germany pledged to stop surprise attacks on passenger vessels — a promise it later broke."},
+    {q:"Which factor tied American economic interests to an Allied victory well before the United States entered the war?",a:3,
+     why:"Billions in loans and trade flowed to Britain and France, giving American finance a large stake in their success."}
+  ]
+},
+{
+  section:"American mobilization",
+  options:["The Selective Service Act","The War Industries Board","The Committee on Public Information","The Espionage and Sedition Acts"],
+  questions:[
+    {q:"Which measure raised the bulk of the American Expeditionary Forces through a national draft?",a:0,
+     why:"The Selective Service Act registered millions of men and supplied most of the troops sent to France."},
+    {q:"Which agency, led by Bernard Baruch, coordinated factories and allocated raw materials for the war effort?",a:1,
+     why:"The War Industries Board directed production priorities, standardized goods, and managed scarce materials."},
+    {q:"Which agency, headed by George Creel, saturated the country with posters, films, and 'Four-Minute Men' speeches?",a:2,
+     why:"The Committee on Public Information ran the government's vast propaganda campaign to sell the war at home."},
+    {q:"Which measures criminalized antiwar speech and were used to imprison critics such as Eugene V. Debs?",a:3,
+     why:"The Espionage and Sedition Acts sharply curtailed dissent, leading to hundreds of prosecutions."}
+  ]
+},
+{
+  section:"The American home front",
+  options:["The Great Migration","Women's entry into industrial work","Liberty Loan drives","The U.S. Food Administration"],
+  questions:[
+    {q:"Which wartime movement drew hundreds of thousands of Black southerners to jobs in northern industrial cities?",a:0,
+     why:"Labor shortages and the pull of factory wages accelerated the Great Migration out of the Jim Crow South."},
+    {q:"Which wartime change strengthened the case for the Nineteenth Amendment by demonstrating contributions far beyond the home?",a:1,
+     why:"Women's visible work in factories and services undercut arguments against granting them the vote."},
+    {q:"Which effort financed much of the American war effort through mass public bond campaigns promoted by celebrities and rallies?",a:2,
+     why:"Liberty Loan drives raised billions from ordinary citizens and made buying bonds a test of patriotism."},
+    {q:"Which program, led by Herbert Hoover, promoted 'meatless' and 'wheatless' days to conserve supplies for the Allies?",a:3,
+     why:"The Food Administration relied on voluntary conservation rather than rationing to free food for export."}
+  ]
+},
+{
+  section:"Revolution in Russia",
+  options:["The February Revolution","The Provisional Government","The Bolshevik Revolution","The Treaty of Brest-Litovsk"],
+  questions:[
+    {q:"Which upheaval, sparked by bread shortages and war weariness, ended more than three centuries of Romanov rule?",a:0,
+     why:"Strikes and mutinies in Petrograd forced Nicholas II to abdicate, toppling the tsarist monarchy."},
+    {q:"Which authority fatally undermined its own support by choosing to keep Russia in the war through 1917?",a:1,
+     why:"The Provisional Government's decision to continue fighting cost it the loyalty of soldiers, workers, and peasants."},
+    {q:"Which seizure of power was carried out under the slogan 'Peace, Land, and Bread'?",a:2,
+     why:"Lenin's Bolsheviks took power in October 1917 promising exactly what the Provisional Government had failed to deliver."},
+    {q:"Which settlement took Russia out of the war at the cost of vast territories along its western borderlands?",a:3,
+     why:"At Brest-Litovsk the Bolsheviks surrendered Ukraine, the Baltic lands, and more to secure peace with Germany."}
+  ]
+},
+{
+  section:"Military commanders",
+  options:["Ferdinand Foch","Douglas Haig","Erich Ludendorff","John J. Pershing"],
+  questions:[
+    {q:"Which commander became supreme Allied generalissimo in 1918, coordinating the counteroffensives that ended the war?",a:0,
+     why:"Foch was given overall command of Allied forces and directed the coordinated advances of the war's final months."},
+    {q:"Which commander led British forces through the Somme and Passchendaele, earning lasting controversy over their cost?",a:1,
+     why:"Haig commanded the British Expeditionary Force through its bloodiest battles; historians still debate his generalship."},
+    {q:"Which commander directed Germany's last great offensives and later helped spread the 'stab-in-the-back' myth?",a:2,
+     why:"Ludendorff dominated German strategy from 1916, gambled everything in 1918, and then blamed civilians for defeat."},
+    {q:"Which commander insisted that American troops fight as an independent army rather than as replacements within Allied units?",a:3,
+     why:"Pershing resisted amalgamation, holding out until the AEF could take the field under its own flag."}
+  ]
+},
+{
+  section:"The peacemakers",
+  options:["Woodrow Wilson","Georges Clemenceau","David Lloyd George","Vittorio Orlando"],
+  questions:[
+    {q:"Which peacemaker arrived in Paris championing a new world order built on his Fourteen Points?",a:0,
+     why:"Wilson came to the conference as the prophet of a principled peace and collective security."},
+    {q:"Which peacemaker, nicknamed 'the Tiger,' demanded harsh terms to guarantee his country's security against Germany?",a:1,
+     why:"Clemenceau, whose France had been invaded twice in living memory, pressed hardest for a punitive settlement."},
+    {q:"Which peacemaker campaigned at home on making Germany pay, yet privately feared a peace harsh enough to destabilize Europe?",a:2,
+     why:"Lloyd George balanced a vengeful British electorate against his worry that a crushed Germany would breed future war."},
+    {q:"Which peacemaker walked out of the conference when his country's Adriatic claims, especially the port of Fiume, were denied?",a:3,
+     why:"Orlando's departure reflected Italian fury at receiving less than the Treaty of London had promised."}
+  ]
+},
+{
+  section:"The Fourteen Points",
+  options:["National self-determination","Freedom of the seas","Open diplomacy","A general association of nations"],
+  questions:[
+    {q:"Which principle held that ethnic groups should be able to form and govern their own states?",a:0,
+     why:"Self-determination promised peoples of the old empires the right to rule themselves — a promise applied very unevenly."},
+    {q:"Which principle directly challenged Britain's traditional reliance on naval blockades in wartime?",a:1,
+     why:"Freedom of the seas threatened the blockade weapon, and Britain never accepted the point."},
+    {q:"Which principle rejected the secret treaties that many blamed for dragging Europe into war?",a:2,
+     why:"'Open covenants, openly arrived at' was Wilson's answer to the hidden diplomacy of the prewar alliance system."},
+    {q:"Which proposal, the final item among Wilson's points, aimed to provide collective security for great and small states alike?",a:3,
+     why:"The fourteenth point called for a general association of nations — the seed of the League of Nations."}
+  ]
+},
+{
+  section:"The Treaty of Versailles",
+  options:["The war-guilt clause","Reparations payments","Military restrictions on Germany","German territorial losses"],
+  questions:[
+    {q:"Which provision, Article 231, forced Germany to accept formal responsibility for causing the war?",a:0,
+     why:"The war-guilt clause supplied the legal basis for reparations and became a lasting source of German resentment."},
+    {q:"Which provision saddled Germany with enormous financial obligations that helped destabilize its postwar economy?",a:1,
+     why:"Reparations strained the Weimar economy and poisoned German politics throughout the 1920s."},
+    {q:"Which provision capped the German army at one hundred thousand men and demilitarized the Rhineland?",a:2,
+     why:"The military clauses were meant to make Germany permanently incapable of offensive war."},
+    {q:"Which provision returned Alsace-Lorraine to France and stripped Germany of its overseas colonies?",a:3,
+     why:"Germany lost roughly a tenth of its European territory and its entire colonial empire."}
+  ]
+},
+{
+  section:"Redrawing the map",
+  options:["Poland","Czechoslovakia","Yugoslavia","Austria"],
+  questions:[
+    {q:"Which state was restored to the map after more than a century of partition, receiving a corridor to the Baltic Sea?",a:0,
+     why:"Reborn Poland gained the Polish Corridor, which separated East Prussia from the rest of Germany."},
+    {q:"Which new state inherited much of the old empire's industry but contained a restive German-speaking minority in the Sudetenland?",a:1,
+     why:"Czechoslovakia combined industrial Bohemia with a border population of some three million Germans."},
+    {q:"Which new state united the South Slavic peoples under a monarchy dominated by Serbia?",a:2,
+     why:"The Kingdom of Serbs, Croats, and Slovenes — later Yugoslavia — fulfilled, uneasily, the dream of South Slav unity."},
+    {q:"Which state was reduced to a small German-speaking republic and explicitly forbidden to unite with Germany?",a:3,
+     why:"Rump Austria, cut off from its former empire, was barred from Anschluss by the peace treaties."}
+  ]
+},
+{
+  section:"The Ottoman Empire at war",
+  options:["The Armenian Genocide","The Arab Revolt","The Sykes-Picot Agreement","The Balfour Declaration"],
+  questions:[
+    {q:"Which wartime atrocity involved the mass deportation and killing of a Christian minority by Ottoman authorities?",a:0,
+     why:"Beginning in 1915, Ottoman deportations and massacres killed as many as a million or more Armenians."},
+    {q:"Which uprising, encouraged by British promises of independence, turned local forces against Ottoman rule?",a:1,
+     why:"The Arab Revolt, associated with figures like Faisal and T. E. Lawrence, opened a front inside the empire."},
+    {q:"Which secret arrangement divided Ottoman lands into future British and French spheres of influence?",a:2,
+     why:"Sykes-Picot carved up the Middle East between the two powers — contradicting promises made to the Arabs."},
+    {q:"Which statement expressed British support for a Jewish national home in Palestine?",a:3,
+     why:"The Balfour Declaration of 1917 committed Britain to a policy with consequences that far outlasted the war."}
+  ]
+},
+{
+  section:"A world war",
+  options:["Indian Army soldiers","ANZAC troops","African carriers and askari","The Chinese Labour Corps"],
+  questions:[
+    {q:"Which contribution sent more than a million men from South Asia to fronts in France, Mesopotamia, and East Africa?",a:0,
+     why:"The Indian Army was the British Empire's largest colonial force, serving in nearly every theater."},
+    {q:"Which force's sacrifice at Gallipoli became a foundation of national identity in Australia and New Zealand?",a:1,
+     why:"The ANZAC landings are commemorated to this day as a formative national experience in both countries."},
+    {q:"Which participants sustained the campaign in East Africa, where disease and exhaustion killed porters by the tens of thousands?",a:2,
+     why:"African soldiers and, above all, conscripted carriers bore the human cost of the grinding East African campaign."},
+    {q:"Which group of roughly 140,000 noncombatants dug trenches and moved supplies for the Allies on the Western Front?",a:3,
+     why:"The Chinese Labour Corps performed essential logistical work in France, largely written out of popular memory."}
+  ]
+},
+{
+  section:"1918: the end",
+  options:["The German Spring Offensive","The Hundred Days Offensive","The German Revolution","The Armistice of Compiègne"],
+  questions:[
+    {q:"Which last-ditch gamble used stormtrooper tactics to drive deep toward Paris before finally stalling?",a:0,
+     why:"Ludendorff's spring offensives won ground but no decision, and left the German army fatally overextended."},
+    {q:"Which sustained Allied advance broke the Hindenburg Line and convinced German commanders the war was lost?",a:1,
+     why:"The Hundred Days Offensive rolled the German army back continuously from August 1918 until the war's end."},
+    {q:"Which upheaval began with a naval mutiny at Kiel and ended with the Kaiser's abdication?",a:2,
+     why:"Sailors' refusal to sail on a final suicidal sortie ignited a revolution that toppled the monarchy within days."},
+    {q:"Which agreement, signed in a railway carriage in a French forest, finally silenced the guns on the Western Front?",a:3,
+     why:"The armistice took effect at 11 a.m. on November 11, 1918, ending the fighting though not formally the war."}
+  ]
+},
+{
+  section:"Total war",
+  options:["Total war mobilization","Wartime propaganda","Rationing","Conscription"],
+  questions:[
+    {q:"Which concept describes the harnessing of entire economies and civilian populations to the war effort?",a:0,
+     why:"Total war erased the line between battlefront and home front: every worker, factory, and farm became a war resource."},
+    {q:"Which tool demonized the enemy with atrocity stories and pressed civilians to serve, save, and sacrifice?",a:1,
+     why:"Every belligerent used propaganda to sustain morale, recruit soldiers, and dehumanize the other side."},
+    {q:"Which policy allocated scarce food and fuel among civilians, becoming a daily reminder of the war's demands?",a:2,
+     why:"Rationing systems governed everyday consumption, most severely in blockaded Germany and Austria-Hungary."},
+    {q:"Which policy compelled military service and provoked bitter crises in places such as Quebec and Ireland?",a:3,
+     why:"Conscription raised mass armies but ignited fierce resistance among populations unwilling to be drafted."}
+  ]
+},
+{
+  section:"Costs and consequences",
+  options:["The influenza pandemic","The 'Lost Generation'","The 'stab-in-the-back' myth","War debts and reparations tangles"],
+  questions:[
+    {q:"Which catastrophe, spread partly by wartime troop movements, killed more people worldwide than the fighting itself?",a:0,
+     why:"The 1918–1919 influenza pandemic killed tens of millions — far exceeding the war's battlefield deaths."},
+    {q:"Which label captured the disillusionment of writers and veterans who felt betrayed by the ideals they had been raised on?",a:1,
+     why:"The 'Lost Generation' — Hemingway, Remarque, and others — gave voice to postwar alienation and doubt."},
+    {q:"Which falsehood blamed Germany's defeat on civilians, socialists, and Jews rather than on military collapse?",a:2,
+     why:"The 'stab-in-the-back' myth shielded the army's reputation and became poisonous ammunition for the far right."},
+    {q:"Which burden entangled former allies and enemies alike in a fragile cycle of loans and payments during the 1920s?",a:3,
+     why:"Reparations flowed to the Allies, who owed war debts to the United States — a circuit that collapsed with the Depression."}
+  ]
+},
+{
+  section:"America and the peace",
+  options:["The Senate's rejection of the treaty","Lodge's reservations","Wilson's national speaking tour","The 'return to normalcy'"],
+  questions:[
+    {q:"Which outcome kept the United States out of the League of Nations that its own president had championed?",a:0,
+     why:"The Senate refused to ratify the Treaty of Versailles, so the United States never joined the League."},
+    {q:"Which proposal sought to limit the obligations of Article X as the price of ratifying the treaty?",a:1,
+     why:"Henry Cabot Lodge's reservations would have curbed the League's power to commit American forces — Wilson refused them."},
+    {q:"Which effort to rally public support for the treaty ended when the president collapsed and suffered a devastating stroke?",a:2,
+     why:"Wilson's grueling cross-country tour broke his health and, with it, any hope of compromise on the treaty."},
+    {q:"Which slogan captured the postwar mood that swept Warren G. Harding into the presidency?",a:3,
+     why:"'Return to normalcy' promised escape from wartime crusades, crackdowns, and foreign entanglements."}
+  ]
+}
+];
+
+/* ---------- quiz engine ---------- */
+
+const els = {
+  start: document.getElementById("startScreen"),
+  quiz: document.getElementById("quizScreen"),
+  results: document.getElementById("resultsScreen"),
+  stem: document.getElementById("qStem"),
+  opts: document.getElementById("qOptions"),
+  counter: document.getElementById("qCounter"),
+  sectionLbl: document.getElementById("qSection"),
+  back: document.getElementById("backBtn"),
+  next: document.getElementById("nextBtn"),
+  note: document.getElementById("answeredNote"),
+  fill: document.getElementById("progressFill"),
+  ticks: document.getElementById("ticks"),
+  scoreLine: document.getElementById("scoreLine"),
+  verdict: document.getElementById("verdict"),
+  reviewList: document.getElementById("reviewList"),
+  reviewBlock: document.getElementById("reviewBlock"),
+  resultDate: document.getElementById("resultDate"),
+  live: document.getElementById("liveRegion"),
+};
+
+let slots = [];   // one entry per pool: {pool, qIndex, order[4], selected}
+let current = 0;
+
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function buildQuiz(){
+  slots = POOLS.map((pool, pi) => ({
+    pool: pi,
+    qIndex: Math.floor(Math.random() * pool.questions.length),
+    order: shuffle([0,1,2,3]),   // randomized distracter order (rule 3)
+    selected: null,
+  }));
+  current = 0;
+}
+
+function answeredCount(){
+  return slots.filter(s => s.selected !== null).length;
+}
+
+function renderQuestion(){
+  const slot = slots[current];
+  const pool = POOLS[slot.pool];
+  const q = pool.questions[slot.qIndex];
+
+  els.counter.textContent = "Question " + (current + 1) + " of " + slots.length;
+  els.sectionLbl.textContent = pool.section;
+  els.stem.textContent = q.q;
+
+  els.opts.innerHTML = "";
+  slot.order.forEach((optIdx) => {
+    const li = document.createElement("li");
+    const label = document.createElement("label");
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = "answer";
+    input.value = String(optIdx);
+    input.checked = slot.selected === optIdx;
+    input.addEventListener("change", () => {
+      slot.selected = optIdx;
+      updateChrome();
+    });
+    const span = document.createElement("span");
+    span.textContent = pool.options[optIdx];
+    label.appendChild(input);
+    label.appendChild(span);
+    li.appendChild(label);
+    els.opts.appendChild(li);
+  });
+
+  updateChrome();
+  els.stem.setAttribute("tabindex", "-1");
+  els.stem.focus({preventScroll:false});
+  els.live.textContent = "Question " + (current + 1) + " of " + slots.length;
+}
+
+function updateChrome(){
+  els.back.disabled = current === 0;
+  els.next.textContent = current === slots.length - 1 ? "Submit" : "Next";
+  const n = answeredCount();
+  els.note.textContent = n + " of " + slots.length + " answered";
+  els.fill.style.width = ((current) / (slots.length - 1) * 100) + "%";
+}
+
+function submitQuiz(){
+  const unanswered = slots.length - answeredCount();
+  if(unanswered > 0){
+    const ok = window.confirm(unanswered + " question" + (unanswered === 1 ? " is" : "s are") +
+      " unanswered and will be marked incorrect. Submit anyway?");
+    if(!ok) return;
+  }
+  showResults();
+}
+
+function showResults(){
+  let correct = 0;
+  const missed = [];
+  slots.forEach((slot, i) => {
+    const pool = POOLS[slot.pool];
+    const q = pool.questions[slot.qIndex];
+    if(slot.selected === q.a){ correct++; }
+    else { missed.push({num: i + 1, pool, q, selected: slot.selected}); }
+  });
+
+  const pct = Math.round(correct / slots.length * 100);
+  els.scoreLine.textContent = "Score: " + correct + " / " + slots.length + " (" + pct + "%)";
+  els.verdict.textContent =
+    pct >= 90 ? "Outstanding command of the material." :
+    pct >= 75 ? "Solid work — review the items below and the gaps close quickly." :
+    pct >= 60 ? "A fair showing. The review below is where the points are." :
+    "Plenty of ground to retake. Work through the review, then try a fresh draw.";
+
+  els.reviewList.innerHTML = "";
+  if(missed.length === 0){
+    els.reviewBlock.querySelector("h2").textContent = "Nothing missed — a clean sweep.";
+  } else {
+    els.reviewBlock.querySelector("h2").textContent =
+      "Review of missed questions (" + missed.length + ")";
+    missed.forEach(m => {
+      const div = document.createElement("div");
+      div.className = "review-item";
+      const stem = document.createElement("p");
+      stem.className = "stem";
+      stem.innerHTML = "<strong>Q" + m.num + ".</strong> ";
+      stem.appendChild(document.createTextNode(m.q.q));
+      div.appendChild(stem);
+
+      const yours = document.createElement("p");
+      yours.innerHTML = '<span class="tag yours">Your answer:</span> ';
+      yours.appendChild(document.createTextNode(
+        m.selected === null ? "(no answer)" : m.pool.options[m.selected]));
+      div.appendChild(yours);
+
+      const right = document.createElement("p");
+      right.innerHTML = '<span class="tag correct">Correct answer:</span> ';
+      right.appendChild(document.createTextNode(m.pool.options[m.q.a]));
+      div.appendChild(right);
+
+      const why = document.createElement("p");
+      why.className = "why";
+      why.textContent = m.q.why;
+      div.appendChild(why);
+
+      els.reviewList.appendChild(div);
+    });
+  }
+
+  els.resultDate.textContent = new Date().toLocaleDateString(undefined,
+    {year:"numeric", month:"long", day:"numeric"});
+  els.quiz.classList.add("hidden");
+  els.results.classList.remove("hidden");
+  els.fill.style.width = "100%";
+  els.scoreLine.focus();
+}
+
+/* ---------- wiring ---------- */
+
+// progress tick marks (one per question)
+for(let i = 0; i < 25; i++){
+  const t = document.createElement("span");
+  els.ticks.appendChild(t);
+}
+
+document.getElementById("startBtn").addEventListener("click", () => {
+  buildQuiz();
+  els.start.classList.add("hidden");
+  els.results.classList.add("hidden");
+  els.quiz.classList.remove("hidden");
+  renderQuestion();
+});
+
+els.back.addEventListener("click", () => {
+  if(current > 0){ current--; renderQuestion(); }
+});
+
+els.next.addEventListener("click", () => {
+  if(current < slots.length - 1){ current++; renderQuestion(); }
+  else { submitQuiz(); }
+});
+
+document.getElementById("retakeBtn").addEventListener("click", () => {
+  buildQuiz();
+  els.results.classList.add("hidden");
+  els.quiz.classList.remove("hidden");
+  renderQuestion();
+});
+
+document.getElementById("qForm").addEventListener("submit", e => e.preventDefault());
+</script>
+</body>
+</html>
