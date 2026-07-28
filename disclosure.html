@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<!--
+  Copyright 2026 Joseph L. Selby, Purramid Learning®, Inc.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hegemon Learning Guide — Technical Disclosure</title>
+<meta name="description" content="Technical disclosure of the architecture and design of the Hegemon Learning Guide, a misconception-targeted AI scaffolding system for coordinate plane instruction.">
+<meta name="author" content="Joseph L. Selby">
+<!--
+  Prior art disclosure. Published to GitHub Pages so the commit history provides
+  a verifiable publication timestamp. Standalone: no build step, no dependencies
+  beyond Google Fonts. Design language inherited from coordinate-plane-lesson.html.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#16263d;
+    --ink-soft:#54647a;
+    --paper:#f6f9fc;
+    --surface:#ffffff;
+    --line:#e6edf4;
+    --grid:#dbe6f1;
+    --x:#e2603a;
+    --x-tint:#fbece6;
+    --y:#0e9488;
+    --y-tint:#e3f3f1;
+    --focus:#2f6df0;
+    --font-display:'Space Grotesk',system-ui,sans-serif;
+    --font-body:'Inter',system-ui,sans-serif;
+    --font-mono:'Space Mono',ui-monospace,monospace;
+    --maxw:840px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    font-family:var(--font-body);
+    color:var(--ink);
+    background-color:var(--paper);
+    background-image:
+      linear-gradient(var(--grid) 1px,transparent 1px),
+      linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:28px 28px;
+    background-position:center top;
+    line-height:1.65;
+    font-size:16.5px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 22px}
+  .skip-link{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
+  .skip-link:focus{position:fixed;top:12px;left:12px;width:auto;height:auto;padding:10px 16px;background:var(--ink);color:#fff;border-radius:6px;font-weight:600;font-size:.9rem;z-index:9999;overflow:visible}
+
+  /* ---------- header ---------- */
+  header.masthead{
+    background:var(--ink);
+    color:#fff;
+    border-bottom:3px solid var(--x);
+  }
+  .masthead .wrap{padding-top:30px;padding-bottom:34px}
+  .crumb{
+    font-family:var(--font-mono);
+    font-size:.72rem;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:#9fb2c9;
+    margin:0 0 18px;
+  }
+  h1.title{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:clamp(1.7rem,4.6vw,2.5rem);
+    line-height:1.08;
+    margin:0 0 14px;
+    letter-spacing:-.01em;
+  }
+  .title .c-x{color:var(--x)}
+  .title .c-y{color:var(--y)}
+  .lede{color:#cdd8e6;font-size:1.02rem;max-width:56ch;margin:0 0 22px}
+  .meta{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+    gap:14px 26px;
+    border-top:1px solid rgba(255,255,255,.14);
+    padding-top:18px;
+  }
+  .meta dt{
+    font-family:var(--font-mono);
+    font-size:.68rem;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:#9fb2c9;
+    margin:0 0 3px;
+  }
+  .meta dd{margin:0;font-size:.94rem;font-weight:600;color:#fff}
+  .meta dd a{color:#fff;text-decoration:underline;text-underline-offset:3px}
+
+  /* ---------- contents ---------- */
+  .toc{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:20px 24px;
+    margin:-24px auto 0;
+    box-shadow:0 14px 30px -22px rgba(22,38,61,.4);
+  }
+  .toc h2{
+    font-family:var(--font-mono);
+    text-transform:uppercase;
+    letter-spacing:.12em;
+    font-size:.72rem;
+    font-weight:700;
+    color:var(--ink-soft);
+    margin:0 0 12px;
+  }
+  .toc ol{margin:0;padding-left:0;list-style:none;counter-reset:toc;
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:2px 24px}
+  .toc li{counter-increment:toc;font-size:.93rem;padding:3px 0}
+  .toc li::before{
+    content:counter(toc) ".";
+    font-family:var(--font-mono);font-size:.78rem;font-weight:700;
+    color:var(--x);margin-right:8px;
+  }
+  .toc a{color:var(--ink);text-decoration:none;border-bottom:1px solid transparent}
+  .toc a:hover{border-bottom-color:var(--ink-soft)}
+  .toc a:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:2px}
+
+  /* ---------- sections ---------- */
+  main{padding:18px 0 10px}
+  section.doc{margin:48px 0;scroll-margin-top:20px}
+  .eyebrow{
+    font-family:var(--font-mono);
+    text-transform:uppercase;
+    letter-spacing:.13em;
+    font-size:.71rem;
+    color:var(--ink-soft);
+    margin:0 0 4px;
+  }
+  section.doc > h2{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:clamp(1.35rem,3.2vw,1.75rem);
+    line-height:1.18;
+    margin:.05em 0 .55em;
+    letter-spacing:-.01em;
+    padding-bottom:10px;
+    border-bottom:2px solid var(--line);
+  }
+  h3{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:1.08rem;
+    margin:1.9em 0 .45em;
+  }
+  h4{
+    font-family:var(--font-mono);
+    font-weight:700;
+    font-size:.82rem;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin:1.6em 0 .4em;
+  }
+  p{margin:0 0 1.05em}
+  ul,ol{margin:0 0 1.05em;padding-left:1.35em}
+  li{margin:.35em 0}
+  a{color:var(--focus)}
+  code{
+    font-family:var(--font-mono);
+    font-size:.86em;
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:1px 5px;
+  }
+  .pair{font-family:var(--font-mono);font-weight:700;white-space:nowrap}
+  .pair .x{color:var(--x)}
+  .pair .y{color:var(--y)}
+
+  /* code blocks — light surface so they stay legible in print */
+  pre{
+    font-family:var(--font-mono);
+    font-size:.8rem;
+    line-height:1.6;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-left:4px solid var(--ink);
+    border-radius:0 10px 10px 0;
+    padding:16px 18px;
+    margin:1.2em 0;
+    overflow-x:auto;
+  }
+  pre code{background:none;border:none;padding:0;font-size:inherit}
+  .pre-label{
+    font-family:var(--font-mono);
+    font-size:.68rem;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin:1.4em 0 -.9em;
+  }
+
+  /* ---------- callouts ---------- */
+  .callout{
+    border-left:4px solid var(--x);
+    background:var(--x-tint);
+    padding:14px 18px;
+    border-radius:0 10px 10px 0;
+    margin:1.3em 0;
+    font-size:.95rem;
+  }
+  .callout.y{border-left-color:var(--y);background:var(--y-tint)}
+  .callout p:last-child{margin-bottom:0}
+  .callout strong{font-family:var(--font-display)}
+
+  /* ---------- tables ---------- */
+  .tbl-scroll{overflow-x:auto;margin:1.3em 0}
+  table{
+    width:100%;border-collapse:collapse;
+    font-size:.9rem;background:var(--surface);
+    border:1px solid var(--line);border-radius:12px;overflow:hidden;
+  }
+  th,td{padding:10px 13px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+  thead th{
+    font-family:var(--font-mono);font-size:.68rem;text-transform:uppercase;
+    letter-spacing:.1em;color:var(--ink-soft);background:var(--paper);
+    white-space:nowrap;
+  }
+  tbody tr:last-child td{border-bottom:none}
+  td.mono,th.mono{font-family:var(--font-mono);font-weight:700;white-space:nowrap}
+  .c-x{color:var(--x)}
+  .c-y{color:var(--y)}
+  table.center td:not(:first-child),table.center th:not(:first-child){text-align:center}
+
+  /* ---------- taxonomy entries ---------- */
+  .mc{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:18px 22px;
+    margin:1.2em 0;
+  }
+  .mc-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+  .mc-code{
+    font-family:var(--font-mono);
+    font-size:.8rem;
+    font-weight:700;
+    color:var(--ink);
+    background:var(--paper);
+    border:1.5px solid var(--ink);
+    border-radius:7px;
+    padding:2px 9px;
+    white-space:nowrap;
+  }
+  .mc-name{font-family:var(--font-display);font-weight:700;font-size:1.02rem}
+  .mc dl{margin:0;display:grid;grid-template-columns:max-content 1fr;gap:6px 16px}
+  .mc dt{
+    font-family:var(--font-mono);font-size:.68rem;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--ink-soft);padding-top:.28em;
+  }
+  .mc dd{margin:0;font-size:.94rem}
+  .mc.reserved{background:var(--paper);border-style:dashed}
+
+  /* ---------- diagram ---------- */
+  .figure{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:20px 18px 16px;
+    margin:1.5em 0;
+  }
+  .figure svg{width:100%;height:auto;display:block;margin:0 auto;max-width:880px}
+  figcaption{
+    font-size:.85rem;color:var(--ink-soft);
+    margin-top:14px;max-width:62ch;margin-left:auto;margin-right:auto;text-align:center;
+  }
+  .legend{
+    display:flex;justify-content:center;flex-wrap:wrap;gap:8px 22px;
+    margin-top:14px;font-family:var(--font-mono);font-size:.7rem;
+    letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);
+  }
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .swatch{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .sw-x{background:var(--x)}
+  .sw-y{background:var(--y)}
+  .sw-ink{background:var(--ink)}
+
+  /* diagram svg primitives */
+  .dg-box{fill:var(--surface);stroke-width:2}
+  .dg-box.client{stroke:var(--x)}
+  .dg-box.server{stroke:var(--y)}
+  .dg-box.neutral{stroke:var(--ink-soft);stroke-dasharray:5 4}
+  .dg-band{fill:none;stroke:var(--line);stroke-width:1.5;stroke-dasharray:4 5}
+  .dg-title{font-family:var(--font-display);font-weight:700;font-size:13px;fill:var(--ink)}
+  .dg-sub{font-family:var(--font-mono);font-size:10.5px;fill:var(--ink-soft)}
+  .dg-tag{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.08em;fill:var(--ink-soft)}
+  .dg-arrow{stroke:var(--ink);stroke-width:2;fill:none}
+  .dg-arrow.ret{stroke-dasharray:6 5}
+  .dg-lbl{font-family:var(--font-mono);font-size:10px;fill:var(--ink)}
+
+  /* ---------- rules list ---------- */
+  ol.rules{list-style:none;padding-left:0;counter-reset:rule}
+  ol.rules > li{
+    counter-increment:rule;
+    position:relative;
+    padding-left:44px;
+    margin:1.05em 0;
+  }
+  ol.rules > li::before{
+    content:counter(rule);
+    position:absolute;left:0;top:.05em;
+    width:28px;height:28px;border-radius:8px;
+    background:var(--ink);color:#fff;
+    font-family:var(--font-mono);font-size:.8rem;font-weight:700;
+    display:flex;align-items:center;justify-content:center;
+  }
+  ol.rules strong{font-family:var(--font-display)}
+
+  /* ---------- transcript sample ---------- */
+  .turn{
+    background:var(--surface);border:1px solid var(--line);
+    border-radius:12px;padding:14px 18px;margin:.7em 0;font-size:.93rem;
+  }
+  .turn .who{
+    font-family:var(--font-mono);font-size:.68rem;letter-spacing:.11em;
+    text-transform:uppercase;color:var(--ink-soft);display:block;margin-bottom:4px;
+  }
+  .turn.bot{border-left:4px solid var(--y);border-radius:0 12px 12px 0}
+  .turn.student{border-left:4px solid var(--x);border-radius:0 12px 12px 0}
+  .turn p{margin:0}
+  .interstitial{
+    font-family:var(--font-mono);font-size:.71rem;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--ink-soft);
+    margin:.5em 0 .5em 20px;position:relative;
+  }
+  .interstitial::before{
+    content:"";position:absolute;left:-14px;top:-.35em;bottom:-.35em;
+    border-left:2px dotted var(--line);
+  }
+
+  /* ---------- placeholders ---------- */
+  .ph{
+    font-family:var(--font-mono);font-size:.85em;font-weight:700;
+    background:#fff4d6;border:1px dashed #c9a227;color:#7a5c00;
+    border-radius:5px;padding:1px 7px;white-space:nowrap;
+  }
+
+  /* ---------- footer ---------- */
+  footer{
+    border-top:2px solid var(--line);
+    margin-top:56px;padding:30px 0 60px;text-align:center;
+  }
+  footer p{font-family:var(--font-mono);font-size:.73rem;color:var(--ink-soft);margin:.35em 0}
+
+  @media (max-width:600px){
+    body{font-size:16px}
+    .toc{margin-top:-16px}
+    .mc dl{grid-template-columns:1fr;gap:2px}
+    .mc dt{padding-top:.6em}
+  }
+
+  /* ---------- print ---------- */
+  @media print{
+    html,body{
+      background:#fff!important;
+      background-image:none!important;
+      color:#000!important;
+      font-size:10.5pt;
+    }
+    .wrap{max-width:none;padding:0}
+    header.masthead{
+      background:#fff!important;color:#000!important;
+      border-bottom:2pt solid #000;
+    }
+    .masthead .wrap{padding-top:0;padding-bottom:14pt}
+    h1.title,.title .c-x,.title .c-y{color:#000!important}
+    .lede,.crumb,.meta dt{color:#333!important}
+    .meta{border-top:.5pt solid #999}
+    .meta dd,.meta dd a{color:#000!important}
+    .toc{display:none}
+    .skip-link{display:none}
+    section.doc{margin:20pt 0;page-break-inside:auto}
+    section.doc > h2{page-break-after:avoid;border-bottom:1pt solid #000}
+    h3,h4{page-break-after:avoid}
+    .mc,.figure,.callout,.turn,table,pre{
+      page-break-inside:avoid;
+      background:#fff!important;
+      border-color:#999!important;
+      box-shadow:none!important;
+    }
+    .callout,.callout.y{background:#fff!important;border-left:2pt solid #000!important}
+    .mc-code{background:#fff!important;border-color:#000!important;color:#000!important}
+    thead th{background:#fff!important;color:#000!important;border-bottom:1pt solid #000}
+    pre{border-left:2pt solid #000!important}
+    code{background:#fff!important;border-color:#999!important}
+    a{color:#000!important;text-decoration:underline}
+    a[href^="http"]::after{content:" (" attr(href) ")";font-size:8pt;color:#444}
+    ol.rules > li::before{background:#fff!important;color:#000!important;border:1pt solid #000}
+    .interstitial{color:#000!important}
+    .interstitial::before{border-left-color:#999!important}
+    .ph{background:#fff!important;border:1pt dashed #000!important;color:#000!important}
+    .dg-box{fill:#fff!important;stroke:#000!important}
+    .dg-box.neutral{stroke:#666!important}
+    .dg-title,.dg-sub,.dg-tag,.dg-lbl{fill:#000!important}
+    .dg-arrow{stroke:#000!important}
+    .swatch{border:1pt solid #000}
+    .legend{color:#000!important}
+    footer{border-top:1pt solid #000}
+    footer p{color:#000!important}
+  }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<header class="masthead">
+  <div class="wrap">
+    <p class="crumb">Prior Art Disclosure · Hegemon Learning Guide</p>
+    <h1 class="title">Hegemon Learning Guide — <span class="c-x">Technical</span> <span class="c-y">Disclosure</span></h1>
+    <p class="lede">Architecture and design of a misconception-targeted AI scaffolding system for coordinate plane instruction.</p>
+    <dl class="meta">
+      <div>
+        <dt>Author</dt>
+        <dd>Joseph L. Selby</dd>
+      </div>
+      <div>
+        <dt>Publication date</dt>
+        <dd><span class="ph">[PUBLICATION DATE]</span></dd>
+      </div>
+      <div>
+        <dt>Repository</dt>
+        <dd><a href="https://github.com/purramid-learning/Hegemon-Learning-Guide">purramid-learning/Hegemon-Learning-Guide</a></dd>
+      </div>
+      <div>
+        <dt>First commit</dt>
+        <dd>2026-06-28</dd>
+      </div>
+    </dl>
+  </div>
+</header>
+
+<main class="wrap" id="main-content">
+
+  <nav class="toc" aria-label="Contents">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#s1">Problem Statement</a></li>
+      <li><a href="#s2">System Architecture Overview</a></li>
+      <li><a href="#s3">The Marker System</a></li>
+      <li><a href="#s4">Misconception Taxonomy</a></li>
+      <li><a href="#s5">Deterministic Detection Layer</a></li>
+      <li><a href="#s6">Scaffolding Generation Rules</a></li>
+      <li><a href="#s7">Two-Stage Pipeline Distinction</a></li>
+      <li><a href="#s8">Prior Art Search Notes</a></li>
+      <li><a href="#s9">Publication and Timestamp</a></li>
+    </ol>
+  </nav>
+
+  <!-- ============================= 1 ============================= -->
+  <section class="doc" id="s1">
+    <p class="eyebrow">Section 1</p>
+    <h2>Problem Statement</h2>
+
+    <p>A generic Socratic tutor responds to a wrong answer by asking a question. The question is drawn from a general repertoire — <em>"What do you think the first step is?"</em>, <em>"Can you walk me through your reasoning?"</em>, <em>"What does that number tell you?"</em> — and is selected without reference to why this particular student produced this particular answer. The system knows the answer is wrong. It does not know what is wrong.</p>
+
+    <p>This is not diagnosis. It is a conversational posture that resembles diagnosis. The distinction matters because the two failure modes it papers over are not equivalent, and they do not respond to the same intervention.</p>
+
+    <h3>What generic Socratic bots do</h3>
+
+    <p>The common implementation compares the student's response to a stored correct answer, branches on a boolean, and — on the false branch — passes the item text and the student's response to a language model with an instruction of the form <em>"do not give the answer; ask a leading question."</em> The model, having no representation of the student's error beyond the raw string, produces a question whose relevance is a matter of chance. Where the model does infer something about the error, the inference is unconstrained, unlogged, and unavailable to the rest of the system: it exists only inside a generation that is immediately discarded.</p>
+
+    <p>The result is a tutor that is reliably polite, reliably question-shaped, and unreliably useful. Two students who plot <span class="pair">(<span class="x">−3</span>, <span class="y">2</span>)</span> at <span class="pair">(<span class="x">2</span>, <span class="y">−3</span>)</span> and at <span class="pair">(<span class="x">3</span>, <span class="y">2</span>)</span> receive interchangeable prompts, though the first swapped the coordinates and the second mishandled a negative. Neither error is addressed. Both students are asked to try again in a friendlier voice.</p>
+
+    <h3>Why that is insufficient</h3>
+
+    <ul>
+      <li><strong>Scaffolding without a target is arbitrary.</strong> A rung is only a rung if it sits between where the student is and where the item requires them to be. Without locating the student, the system cannot place the rung; it can only place <em>a</em> rung.</li>
+      <li><strong>The error signal is discarded.</strong> Because classification happens implicitly inside a generation, nothing downstream can act on it — not the item sequencer, not the teacher report, not the next turn of the same conversation.</li>
+      <li><strong>Behavior is non-reproducible.</strong> Identical student input can yield materially different tutoring across runs. A pedagogical system whose diagnosis is a sampling artifact cannot be audited, regression-tested, or defended to a district.</li>
+      <li><strong>Student work is sent to a third party.</strong> Handing raw student responses to a model API to be implicitly classified moves student data off local infrastructure for a task that, at this scope, does not require it.</li>
+    </ul>
+
+    <h3>What misconception-targeted scaffolding does differently</h3>
+
+    <p>Hegemon separates <strong>classification</strong> from <strong>generation</strong> and assigns them to different layers with different implementation technologies.</p>
+
+    <p>Classification is performed first, deterministically, in client-side JavaScript, by comparing the target coordinate to the plotted coordinate against an ordered set of diagnostic rules. Each rule corresponds to a named, documented misconception. The layer emits a short code — <code>MC-01</code>, <code>MC-06</code>, <code>MC-08</code> — or <code>null</code> when no rule matches.</p>
+
+    <p>Generation is performed second, by a language model that receives the code and the student's conversation history but is <em>never asked to determine what went wrong</em>. Its task is bounded: given that the error is axis transposition, produce the next single Socratic rung that surfaces the ordered-pair convention without stating the answer.</p>
+
+    <div class="callout y">
+      <p><strong>The consequence.</strong> The student who swapped coordinates is asked which of the two numbers tells them how far to move <em>across</em>. The student who mishandled a negative is asked what the minus sign does to the direction of travel. These are different interventions because the diagnoses are different, and the diagnoses are different because something in the system actually performed one.</p>
+    </div>
+  </section>
+
+  <!-- ============================= 2 ============================= -->
+  <section class="doc" id="s2">
+    <p class="eyebrow">Section 2</p>
+    <h2>System Architecture Overview</h2>
+
+    <p>The system is a static front end, a deterministic client-side diagnostic layer, a server-side proxy, and a language model API. There is no student data repository, no user accounts, and no persistent record of student work beyond the browser session.</p>
+
+    <p>Two student-facing surfaces feed the pipeline. The <strong>lesson page</strong> carries instructional content interleaved with invisible <code>hg-marker</code> elements (Section 3); as the student scrolls, a reader module records which markers have been passed and persists that record to <code>sessionStorage</code>. The <strong>practice grid</strong> presents a target coordinate and accepts a click-to-plot response.</p>
+
+    <p>When the student plots a point, the plotted coordinate and the target coordinate are passed to the detection module, which returns a misconception code or <code>null</code>. The code, the marker context package, and the conversation history are posted to a Firebase Cloud Function. That function validates the payload shape, checks the request origin against an allow-list, enforces a per-IP rate limit through a Firestore transaction, assembles the system prompt from the behavioral contract and the session context block, and calls the Claude API using a key held in Cloud Functions secret configuration. The key is never present in client code. The response — a single Socratic rung — is returned to the browser and rendered in the bot panel.</p>
+
+    <p>The student answers, the answer is appended to the conversation history, and the cycle repeats until the student resolves the item. The misconception code is set once, at conversation start, and carried unchanged through the conversation; subsequent turns do not re-classify.</p>
+
+    <div class="figure">
+      <svg viewBox="0 0 880 762" role="img" aria-labelledby="dg-title dg-desc">
+        <title id="dg-title">Hegemon system flow diagram</title>
+        <desc id="dg-desc">Student plots a point on the practice grid; the plotted and target coordinates go to a deterministic misconception detector, which returns a misconception code or null. The lesson page supplies marker context through the marker reader. The bot client packages the code, marker context, and conversation history and posts them to a Firebase Cloud Function, which validates the request, enforces a per-IP rate limit, and calls the Claude API using a server-held key. Claude returns a single Socratic scaffolding rung, which is returned through the proxy and rendered in the bot panel. The student's answer is appended to the conversation history and the cycle repeats.</desc>
+
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#16263d"/>
+          </marker>
+        </defs>
+
+        <!-- band dividers + labels -->
+        <line class="dg-band" x1="46" y1="390" x2="844" y2="390"/>
+        <line class="dg-band" x1="46" y1="642" x2="844" y2="642"/>
+        <text class="dg-tag" x="62" y="20">CLIENT · BROWSER</text>
+        <text class="dg-tag" x="62" y="408">SERVER · FIREBASE + ANTHROPIC</text>
+        <text class="dg-tag" x="62" y="662">CLIENT · BROWSER</text>
+
+        <!-- Row 1: student surfaces -->
+        <rect class="dg-box client" x="60" y="30" width="360" height="66" rx="12"/>
+        <text class="dg-title" x="78" y="58">Lesson page</text>
+        <text class="dg-sub" x="78" y="78">coordinate-plane-lesson.html · hg-marker spans</text>
+
+        <rect class="dg-box client" x="470" y="30" width="360" height="66" rx="12"/>
+        <text class="dg-title" x="488" y="58">Practice grid</text>
+        <text class="dg-sub" x="488" y="78">plotting-grid.html · student plots a point</text>
+
+        <!-- Row 2: client modules -->
+        <rect class="dg-box client" x="60" y="142" width="360" height="76" rx="12"/>
+        <text class="dg-title" x="78" y="170">marker-reader.js</text>
+        <text class="dg-sub" x="78" y="189">tracks markers scrolled past;</text>
+        <text class="dg-sub" x="78" y="205">persists to sessionStorage</text>
+
+        <rect class="dg-box client" x="470" y="142" width="360" height="76" rx="12"/>
+        <text class="dg-title" x="488" y="170">misconception-detection.js</text>
+        <text class="dg-sub" x="488" y="189">deterministic rules, first match wins</text>
+        <text class="dg-sub" x="488" y="205">no model, no training data</text>
+
+        <!-- Row 3: bot client -->
+        <rect class="dg-box client" x="60" y="290" width="770" height="72" rx="12"/>
+        <text class="dg-title" x="78" y="318">hegemon-bot.js — request assembly</text>
+        <text class="dg-sub" x="78" y="338">{ misconceptionCode, markerContext, conversationHistory, taskType }</text>
+
+        <!-- Row 4: proxy -->
+        <rect class="dg-box server" x="60" y="420" width="770" height="92" rx="12"/>
+        <text class="dg-title" x="78" y="448">Firebase Cloud Function — scaffold</text>
+        <text class="dg-sub" x="78" y="468">origin allow-list · payload validation · per-IP rate limit (Firestore transaction)</text>
+        <text class="dg-sub" x="78" y="485">system prompt assembly · API key in secret config, never sent to the client</text>
+
+        <!-- Row 5: Claude -->
+        <rect class="dg-box server" x="245" y="548" width="390" height="66" rx="12"/>
+        <text class="dg-title" x="263" y="576">Claude API — messages.create</text>
+        <text class="dg-sub" x="263" y="596">generation only · does not classify</text>
+
+        <!-- Row 6: bot UI -->
+        <rect class="dg-box client" x="60" y="672" width="770" height="62" rx="12"/>
+        <text class="dg-title" x="78" y="700">Bot panel</text>
+        <text class="dg-sub" x="78" y="720">one Socratic rung rendered · student answers</text>
+
+        <!-- request arrows (solid, downward) -->
+        <path class="dg-arrow" d="M240,96 L240,140" marker-end="url(#ah)"/>
+        <path class="dg-arrow" d="M650,96 L650,140" marker-end="url(#ah)"/>
+        <path class="dg-arrow" d="M240,218 L240,288" marker-end="url(#ah)"/>
+        <path class="dg-arrow" d="M650,218 L650,288" marker-end="url(#ah)"/>
+        <path class="dg-arrow" d="M445,362 L445,418" marker-end="url(#ah)"/>
+        <path class="dg-arrow" d="M445,512 L445,546" marker-end="url(#ah)"/>
+
+        <text class="dg-lbl" x="250" y="126">marker context</text>
+        <text class="dg-lbl" x="660" y="126">(target, plotted)</text>
+        <text class="dg-lbl" x="250" y="260">topicsSeen · prereqEdges · focus</text>
+        <text class="dg-lbl" x="660" y="260">MC-0x | null</text>
+        <text class="dg-lbl" x="455" y="396">HTTPS POST</text>
+        <text class="dg-lbl" x="455" y="536">code + context + history</text>
+
+        <!-- response arrow (dashed, downward through the proxy) -->
+        <path class="dg-arrow ret" d="M445,614 L445,670" marker-end="url(#ah)"/>
+        <text class="dg-lbl" x="455" y="658">scaffolding rung, via proxy</text>
+
+        <!-- student-response loop (dashed, right margin, back to the grid) -->
+        <path class="dg-arrow ret" d="M832,703 L864,703 L864,63 L832,63" marker-end="url(#ah)"/>
+        <text class="dg-lbl" x="876" y="382" transform="rotate(-90 876 382)" text-anchor="middle">answer appended to history · repeat</text>
+      </svg>
+      <div class="legend">
+        <span><i class="swatch sw-x"></i>Student-facing / client</span>
+        <span><i class="swatch sw-y"></i>Backend / AI</span>
+        <span><i class="swatch sw-ink"></i>Data flow</span>
+      </div>
+      <figcaption>Figure 1 — System flow. Classification completes in the browser before any network call is made. Only a misconception code and topic-level marker context cross the network boundary.</figcaption>
+    </div>
+
+    <p class="pre-label">Request payload — client to proxy</p>
+    <pre><code>POST /scaffold
+{
+  "misconceptionCode": "MC-01",          // or null → unclassified handler
+  "taskType": "plot",                    // "plot" | "quadrant"
+  "markerContext": {
+    "source": "persisted",
+    "topicsSeen": ["number-line", "coordinate-plane", "ordered-pair"],
+    "likelyMisconceptionUnion": ["MC-01", "MC-03"],
+    "prereqEdges": [{ "topic": "ordered-pair", "requires": ["x-axis","y-axis","origin"] }],
+    "focus": null
+  },
+  "conversationHistory": [               // must end with a user message
+    { "role": "user", "content": "..." }
+  ]
+}</code></pre>
+
+    <h3>Deployment</h3>
+
+    <ul>
+      <li><strong>Front end</strong> — static HTML, CSS, and vanilla JavaScript in UMD modules. No build step, no framework, no bundler. Served from GitHub Pages.</li>
+      <li><strong>Proxy</strong> — Firebase Cloud Functions (2nd generation), Node.js, <code>us-central1</code>. Rate limit: 20 requests per IP per hour, enforced in a Firestore transaction so the count is consistent across function instances.</li>
+      <li><strong>Model</strong> — Anthropic Claude, invoked through the official SDK with a bounded <code>max_tokens</code> so a single response cannot exceed one scaffolding turn.</li>
+      <li><strong>Tests</strong> — dependency-free Node harnesses over the pure modules; the detection layer is fully testable without a browser, a network, or a model.</li>
+    </ul>
+  </section>
+
+  <!-- ============================= 3 ============================= -->
+  <section class="doc" id="s3">
+    <p class="eyebrow">Section 3</p>
+    <h2>The Marker System</h2>
+
+    <p>I designed the marker system to answer a question that a tutoring bot cannot ask a fourth grader and expect a usable answer: <em>what part of this are you stuck on?</em> Students who are confused are, by construction, poorly positioned to name the source of their confusion. Asking them to self-report produces either silence or a restatement of the item text.</p>
+
+    <p>The marker system moves that burden off the student and onto the instructional content. Concepts are annotated at authoring time with invisible semantic metadata embedded directly in the lesson HTML. At bot activation, the system reads which annotations the student has actually passed and uses them to scope the diagnostic context.</p>
+
+    <h3>Marker element structure</h3>
+
+    <p>A marker is an empty <code>&lt;span&gt;</code> carrying the class <code>hg-marker</code>, three data attributes, and <code>aria-hidden</code>. It is styled <code>display:none</code>, so it never renders, never occupies layout, and is never announced by a screen reader. It is placed adjacent to the visible element that teaches its concept.</p>
+
+    <p class="pre-label">Marker anatomy</p>
+    <pre><code>&lt;span class="hg-marker"
+      data-topic="ordered-pair"
+      data-prereqs="x-axis, y-axis, origin"
+      data-likely-misconceptions="MC-01"
+      aria-hidden="true"&gt;&lt;/span&gt;</code></pre>
+
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr><th class="mono">Attribute</th><th>Contents</th><th>Role in the pipeline</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">data-topic</td>
+            <td>A single kebab-case concept identifier, unique within the lesson.</td>
+            <td>Primary key. Node identity in the concept graph; the unit of "seen" tracking.</td>
+          </tr>
+          <tr>
+            <td class="mono">data-prereqs</td>
+            <td>Comma-separated list of topic identifiers this concept depends on. May be empty.</td>
+            <td>Directed edges in the concept graph. Enables prerequisite routing (CG-04): when a student's stated confusion does not resolve, the system walks upstream rather than re-explaining the same node.</td>
+          </tr>
+          <tr>
+            <td class="mono">data-likely-misconceptions</td>
+            <td>Comma-separated MC codes this concept is known to produce when imperfectly held.</td>
+            <td>Authoring-time prior. Narrows the plausible error space before any student response exists, and lets the system flag concepts a student skipped past.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="pre-label">Real markers from coordinate-plane-lesson.html</p>
+    <pre><code>&lt;span class="hg-marker" data-topic="number-line"
+      data-prereqs="" data-likely-misconceptions="MC-03" aria-hidden="true"&gt;&lt;/span&gt;
+
+&lt;span class="hg-marker" data-topic="origin"
+      data-prereqs="x-axis, y-axis" data-likely-misconceptions="MC-03" aria-hidden="true"&gt;&lt;/span&gt;
+
+&lt;span class="hg-marker" data-topic="quadrant-numbering"
+      data-prereqs="quadrants, sign-to-quadrant"
+      data-likely-misconceptions="MC-04a, MC-04b, MC-04c" aria-hidden="true"&gt;&lt;/span&gt;
+
+&lt;span class="hg-marker" data-topic="order-matters"
+      data-prereqs="ordered-pair" data-likely-misconceptions="MC-01" aria-hidden="true"&gt;&lt;/span&gt;
+
+&lt;span class="hg-marker" data-topic="zero-coordinate"
+      data-prereqs="origin, x-axis, y-axis"
+      data-likely-misconceptions="MC-07, MC-08" aria-hidden="true"&gt;&lt;/span&gt;</code></pre>
+
+    <p>The full lesson carries seventeen markers spanning <code>number-line</code> through <code>zero-coordinate</code>. Together their <code>data-prereqs</code> edges form the lesson's concept graph, authored inline with the content it describes rather than maintained as a separate model that can drift out of sync with the page.</p>
+
+    <h3>How the reader works</h3>
+
+    <p>The reader module (<code>marker-reader.js</code>) exposes two public operations: <code>track()</code>, called once on the lesson page, and <code>read()</code>, called at bot activation on either page.</p>
+
+    <h4>Anchoring</h4>
+    <p>Because a marker is <code>display:none</code>, it has no geometry and cannot itself be tested against the viewport. Each marker is therefore anchored to its nearest visible sibling — the paragraph or figure it sits beside — falling back to its containing section. Scroll position is measured against the anchor.</p>
+
+    <h4>Seen tracking</h4>
+    <p>A marker is recorded as <em>encountered</em> once its anchor's top edge has risen above a configurable fraction of viewport height (default 1.0 — the anchor has appeared from the bottom edge). Tracking is monotonic: scrolling back up never un-sees a marker. Scroll and resize handlers are passive and coalesced into a single <code>requestAnimationFrame</code> sweep.</p>
+
+    <h4>Persistence</h4>
+    <p>Encountered markers are written to <code>sessionStorage</code> under a versioned key. This is what allows the bot to open on the practice grid — a page containing no markers at all — and still know what the student read. On the lesson page, <code>read()</code> merges live scroll state with the persisted snapshot; on the practice grid, it falls back to the snapshot alone. Storage failures are caught and degrade to an empty set rather than throwing.</p>
+
+    <h4>Activation focus</h4>
+    <p>When the student launches the bot by tapping a bolded term rather than by plotting a wrong point, <code>read({ focus })</code> resolves that term to a topic and surfaces it as <code>ctx.focus</code>. Focus also sets the encountered cutoff — tapping a term implies having reached it — so the context reflects the student's position in the lesson even if scroll tracking was incomplete. Resolution prefers an authoring-time <code>data-focus-topic</code> attribute and falls back to a display-string lookup table.</p>
+
+    <h4>Context package</h4>
+    <p>The output is a plain object: the ordered list of encountered marker records, the distinct <code>topicsSeen</code>, the sorted union of their likely misconception codes, the <code>prereqEdges</code> adjacency list, the focus record if any, a provenance field (<code>live</code>, <code>persisted</code>, <code>focus</code>, or <code>empty</code>), and a capture timestamp. This object is what crosses the network boundary. It contains topic identifiers and misconception codes. It contains no student text, no answers, and no identifiers.</p>
+
+    <div class="callout">
+      <p><strong>Boundary.</strong> The reader supplies context and nothing else. It performs no detection, no scoring, and no model call. Its pure helpers — list splitting, marker parsing, context building — are DOM-free and unit-tested in a dependency-free Node harness; only the scroll and persistence glue touches the browser.</p>
+    </div>
+
+    <h3>Why this beats the alternatives</h3>
+
+    <ul>
+      <li><strong>Versus open-ended self-report.</strong> "What are you confused about?" asks the student to perform the metacognitive act they are failing at. The marker system infers scope from behavior the student is already producing — reading — instead of requesting a diagnosis from the person being diagnosed.</li>
+      <li><strong>Versus page scanning.</strong> Extracting concepts by scraping rendered text and inferring structure is lossy, brittle under layout change, and produces no prerequisite relationships. Markers carry the author's intent explicitly: <em>this paragraph teaches this concept, which depends on these, and tends to produce these errors.</em> That is knowledge the page text does not contain and cannot be reliably recovered from it.</li>
+      <li><strong>Versus a separate concept-model file.</strong> A graph maintained apart from the content drifts as soon as the content is edited. Co-locating the annotation with the paragraph it describes makes divergence visible in the same diff.</li>
+      <li><strong>Versus sending page content to the model.</strong> Shipping lesson text to an API for the model to interpret is slower, costlier, non-deterministic, and unnecessary — the relevant structure was known at authoring time and compresses to a handful of identifiers.</li>
+    </ul>
+  </section>
+
+  <!-- ============================= 4 ============================= -->
+  <section class="doc" id="s4">
+    <p class="eyebrow">Section 4</p>
+    <h2>Misconception Taxonomy</h2>
+
+    <p>The taxonomy is scoped to Lesson 1 — Finding Points on the Coordinate Plane: four quadrants, integer coordinates, grid extent −5..5. Notation: <em>target</em> is the point the task asked for, <em>plotted</em> is where the student clicked, and <em>named quadrant</em> is the Roman numeral the student assigns (MC-04 only).</p>
+
+    <p>Two code families exist. <strong>MC</strong> (Misconception) codes describe assessment errors — a wrong plot or a wrong quadrant name — and are inferred by the detector. <strong>CG</strong> (Comprehension Gap) codes describe self-identified confusion about instructional content and carry no diagnostic rule, because the student points at the concept directly. Both operate under the same behavioral contract (Section 6). Each code below records the misconception, its diagnostic rule, and the scaffolding goal — what the Socratic prompt should help the student discover, never what it should tell them.</p>
+
+    <h3>Lesson alignment</h3>
+
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th class="mono">Code</th><th>Surfaces from lesson step</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">MC-01</td><td>Step 4 — ordered pair <span class="pair">(<span class="x">x</span>, <span class="y">y</span>)</span>, "order matters"</td></tr>
+          <tr><td class="mono">MC-02</td><td>Step 5 — negatives go left / down</td></tr>
+          <tr><td class="mono">MC-03</td><td>Steps 4–5 — start at the origin, count the spaces</td></tr>
+          <tr><td class="mono">MC-04a–d</td><td>Step 3 — the I–IV quadrant numbering scheme (separate naming task)</td></tr>
+          <tr><td class="mono">MC-06</td><td>Step 5 — distance vs. direction with negatives</td></tr>
+          <tr><td class="mono">MC-07</td><td>Step 5 — a 0 coordinate sits <em>on</em> an axis</td></tr>
+          <tr><td class="mono">MC-08</td><td>Step 4 — "across, then up" as two separate moves</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Codes</h3>
+
+    <div class="mc">
+      <div class="mc-head"><span class="mc-code">MC-01</span><span class="mc-name">Axis Transposition</span></div>
+      <dl>
+        <dt>Misconception</dt>
+        <dd>Student swaps the two coordinates — moving the y-value across and the x-value up — often by traveling up the y-axis before going across the x-axis.</dd>
+        <dt>Diagnostic</dt>
+        <dd><code>plotted == (target_y, target_x)</code> and <code>target_x != target_y</code></dd>
+        <dt>Goal</dt>
+        <dd>Surface that the first number is the across (x) move and the second is the up/down (y) move — which number did they travel across with?</dd>
+      </dl>
+    </div>
+
+    <div class="mc">
+      <div class="mc-head"><span class="mc-code">MC-02</span><span class="mc-name">Sign / Directionality Error</span></div>
+      <dl>
+        <dt>Misconception</dt>
+        <dd>Student travels the right distance but the wrong direction on one or both axes — e.g., right instead of left for a negative x.</dd>
+        <dt>Diagnostic</dt>
+        <dd><code>plotted_x == -target_x</code> and/or <code>plotted_y == -target_y</code>, with correct magnitude on the affected axis. MC-06 is the stricter case where <em>both</em> magnitudes are exact, and is checked first.</dd>
+        <dt>Goal</dt>
+        <dd>Surface what a negative sign means for direction along that axis — left vs. right on x, down vs. up on y.</dd>
+      </dl>
+    </div>
+
+    <div class="mc">
+      <div class="mc-head"><span class="mc-code">MC-03</span><span class="mc-name">Origin / Offset Error</span></div>
+      <dl>
+        <dt>Misconception</dt>
+        <dd>Student starts counting at 1 instead of 0, or counts gridlines instead of the spaces between them, producing a consistent off-by-one shift.</dd>
+        <dt>Diagnostic</dt>
+        <dd>Signs correct on both axes, and <code>plotted − target</code> is a constant nonzero offset (commonly ±1) on one or both axes. Most reliable across several plotted points.</dd>
+        <dt>Goal</dt>
+        <dd>Surface where counting begins — the origin is 0, not 1 — and that each step counts a space between gridlines.</dd>
+      </dl>
+    </div>
+
+    <h4>MC-04 — Quadrant Numbering Errors</h4>
+
+    <p>Naming a quadrant is a separate skill from plotting a point: it asks the student to apply the I–IV numbering scheme to a location. Whether any point was plotted correctly is irrelevant. The input is a <strong>named quadrant</strong> for a location whose corner is already known from the signs of its coordinates — not a plotted coordinate.</p>
+
+    <p>The correct scheme starts at the <strong>top-right</strong> corner (+x, +y = Quadrant I) and counts <strong>counterclockwise</strong>. Two independent things can go wrong — the starting corner and the direction — producing MC-04a through MC-04c. MC-04d is a distinct schema mismatch that the two-knob model cannot generate.</p>
+
+    <div class="tbl-scroll">
+      <table class="center">
+        <thead>
+          <tr><th>Corner (signs)</th><th class="mono">Correct</th><th class="mono">MC-04a</th><th class="mono">MC-04b</th><th class="mono">MC-04c</th><th class="mono">MC-04d</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>top-right (+, +)</td><td>I</td><td>IV</td><td>I</td><td>II</td><td>II</td></tr>
+          <tr><td>top-left (−, +)</td><td>II</td><td>I</td><td>IV</td><td>I</td><td>I</td></tr>
+          <tr><td>bottom-left (−, −)</td><td>III</td><td>II</td><td>III</td><td>IV</td><td>III</td></tr>
+          <tr><td>bottom-right (+, −)</td><td>IV</td><td>III</td><td>II</td><td>III</td><td>IV</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="mc">
+      <div class="mc-head"><span class="mc-code">MC-04a</span><span class="mc-name">Incorrect Starting Point</span></div>
+      <dl>
+        <dt>Misconception</dt>
+        <dd>Student counts counterclockwise (correct direction) but begins in the wrong corner — numbering the <strong>top-left</strong> as Quadrant I, the way an English reader starts at the top-left of a page. Every quadrant's number shifts one position around the plane.</dd>
+        <dt>Diagnostic</dt>
+        <dd>Named quadrants match the MC-04a column — e.g., a top-right location named IV, or a bottom-left location named II. Independent of whether the point itself was plotted correctly.</dd>
+        <dt>Goal</dt>
+        <dd>Surface where the numbering begins — Quadrant I is the top-right corner, where both coordinates are positive, not the top-left.</dd>
+      </dl>
+    </div>
+
+    <div class="mc">
+      <div class="mc-head"><span class="mc-code">MC-04b</span><span class="mc-name">Clockwise Numbering</span></div>
+      <dl>
+        <dt>Misconception</dt>
+        <dd>Student begins in the correct corner (top-right) but counts <strong>clockwise</strong>. Quadrants I and III — the start and its diagonal opposite — keep their correct numbers; II and IV swap.</dd>
+        <dt>Diagnostic</dt>
+        <dd>Named quadrants match the MC-04b column. Tell-tale single responses: a top-left location named IV, or a bottom-right location named II.</dd>
+        <dt>Goal</dt>
+        <dd>Surface the direction of the count — quadrants are numbered counterclockwise, not clockwise.</dd>
+      </dl>
+    </div>
+
+    <div class="mc">
+      <div class="mc-head"><span class="mc-code">MC-04c</span><span class="mc-name">Incorrect Start and Clockwise</span></div>
+      <dl>
+        <dt>Misconception</dt>
+        <dd>Both errors at once — student begins at the top-left <em>and</em> counts clockwise. Relative to the correct scheme, the top corners swap numbers (I↔II) and the bottom corners swap (III↔IV).</dd>
+        <dt>Diagnostic</dt>
+        <dd>Named quadrants match the MC-04c column. Tell-tale single responses: a top-right location named II, or a bottom-left location named IV.</dd>
+        <dt>Goal</dt>
+        <dd>A compound error — scaffold one knob at a time, never both in one prompt. First surface the starting corner (Quadrant I is the all-positive corner); confirm; <em>then</em> surface the direction (the next number sits where x flips sign but y holds).</dd>
+      </dl>
+    </div>
+
+    <div class="mc">
+      <div class="mc-head"><span class="mc-code">MC-04d</span><span class="mc-name">Row-by-Row (Raster) Numbering</span></div>
+      <dl>
+        <dt>Misconception</dt>
+        <dd>Student numbers quadrants in reading order — top-left, top-right, then bottom-left, bottom-right — rather than starting at the all-positive corner and counting counterclockwise. This is a schema mismatch, not a rotation error: the two-knob model that produces MC-04a/b/c cannot generate the raster pattern, so it sits outside that family.</dd>
+        <dt>Diagnostic</dt>
+        <dd>Named quadrants match the MC-04d column. A top-right location named II is shared with MC-04c; a bottom-corner response is needed to separate them, since MC-04c assigns BL=IV/BR=III while MC-04d assigns BL=III/BR=IV. MC-04d matches the correct scheme on both bottom corners, so this student looks correct on any bottom-corner or axis probe and can only be identified from a top-corner response.</dd>
+        <dt>Goal</dt>
+        <dd>Scaffold start corner and direction one at a time, as for MC-04c. First surface where Quadrant I is; confirm; then surface the direction of counting.</dd>
+      </dl>
+    </div>
+
+    <div class="mc reserved">
+      <div class="mc-head"><span class="mc-code">MC-05</span><span class="mc-name">Reflection Axis Confusion — reserved</span></div>
+      <dl>
+        <dt>Status</dt>
+        <dd>Out of scope for this lesson. The lesson introduces signs and quadrants but never asks students to reflect a point, so there is no task for this code to fire on. The number is <strong>reserved, not reused</strong>, so codes stay aligned with the master template; the full entry is restored when a reflection activity enters scope.</dd>
+      </dl>
+    </div>
+
+    <div class="mc">
+      <div class="mc-head"><span class="mc-code">MC-06</span><span class="mc-name">Magnitude / Sign Conflation</span></div>
+      <dl>
+        <dt>Misconception</dt>
+        <dd>Student gets both distances from the origin right but mirrors the point — right place, wrong direction.</dd>
+        <dt>Diagnostic</dt>
+        <dd><code>abs(plotted_x) == abs(target_x)</code> and <code>abs(plotted_y) == abs(target_y)</code>, but one or both signs are wrong. Checked before MC-02.</dd>
+        <dt>Goal</dt>
+        <dd>Affirm that both distances from the origin are correct, then surface which direction each sign points — this is what distinguishes it from an MC-02 case where a distance may also be wrong.</dd>
+      </dl>
+    </div>
+
+    <div class="mc">
+      <div class="mc-head"><span class="mc-code">MC-07</span><span class="mc-name">Axis-as-Boundary</span></div>
+      <dl>
+        <dt>Misconception</dt>
+        <dd>Student pushes a point with a 0 coordinate off the axis into a neighboring quadrant, instead of placing it on the axis.</dd>
+        <dt>Diagnostic</dt>
+        <dd><code>target_x == 0</code> or <code>target_y == 0</code>, and the plotted point does not lie on that same axis.</dd>
+        <dt>Goal</dt>
+        <dd>Surface that a coordinate of 0 means no movement along that axis, so the point sits <em>on</em> the axis, not inside any quadrant.</dd>
+      </dl>
+    </div>
+
+    <div class="mc">
+      <div class="mc-head"><span class="mc-code">MC-08</span><span class="mc-name">Incomplete Plot / Axis Collapse</span></div>
+      <dl>
+        <dt>Misconception</dt>
+        <dd>Student makes only one of the two moves — travels across but not up, or up but not across — and stops on an axis. Maps directly to the lesson's "across, then up" two-step.</dd>
+        <dt>Diagnostic</dt>
+        <dd><code>target_x != 0</code> and <code>target_y != 0</code> (target is inside a quadrant), but <code>plotted_x == 0</code> or <code>plotted_y == 0</code>.</dd>
+        <dt>Goal</dt>
+        <dd>Surface that a point inside a quadrant needs both an across move and an up/down move from the origin — did they make both?</dd>
+      </dl>
+    </div>
+
+    <h3>Detection order</h3>
+
+    <p>The plotting codes are evaluated in a fixed sequence, first match wins. Order encodes precedence between overlapping signatures: more specific rules run before looser rules that would otherwise claim their cases.</p>
+
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th class="mono">#</th><th class="mono">Code</th><th>Rationale for this position</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">1</td><td class="mono">MC-01</td><td>Runs first so a swapped pair is not misread as a direction error. A transposition frequently satisfies a sign rule incidentally; checking it first preserves the correct diagnosis.</td></tr>
+          <tr><td class="mono">2</td><td class="mono">MC-07</td><td>Zero-coordinate targets are a distinct structural case. Handled before the general sign and offset rules, which are not meaningful when the target lies on an axis.</td></tr>
+          <tr><td class="mono">3</td><td class="mono">MC-08</td><td>The mirror case: target inside a quadrant, plot on an axis. A collapsed plot would otherwise be absorbed by the offset rule when the collapse happens to be one unit.</td></tr>
+          <tr><td class="mono">4</td><td class="mono">MC-06</td><td>Both magnitudes exact, at least one sign wrong. Checked before MC-02 so the scaffolding can <em>affirm the correct distance first</em> — pedagogically distinct from the looser sign error, and the only place that affirmation is warranted.</td></tr>
+          <tr><td class="mono">5</td><td class="mono">MC-02</td><td>The looser sign error: a clean sign flip on at least one axis, with the other axis possibly wrong in magnitude too. Reached only after the exact-mirror case is gone.</td></tr>
+          <tr><td class="mono">6</td><td class="mono">MC-03</td><td>Last of the chain. The off-by-one signature is the weakest and would otherwise capture near-miss plots that belong to a more specific code.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>MC-04 dependency</h3>
+
+    <div class="callout">
+      <p><strong>MC-04a–d cannot fire from plotted coordinates alone.</strong> A click-to-plot grid yields only a coordinate; quadrant numbering errors are only observable when the activity asks the student to <em>name</em> a quadrant. MC-04 is therefore implemented as a <strong>separate detector</strong>, keyed to a named quadrant and the corner the location occupies, and is not part of the coordinate evaluation chain.</p>
+      <p>A single naming response is often ambiguous — a top-right location named "I" fits both the correct scheme and MC-04b. With five candidate schemes, probe choice determines identifiability:</p>
+      <ul>
+        <li><strong>Left or right column</strong> (TL+BL, or TR+BR) — either pair uniquely identifies all five schemes. These are the recommended probes.</li>
+        <li><strong>Top row</strong> (TR+TL) — cannot separate MC-04c from MC-04d; both assign TL=I, TR=II.</li>
+        <li><strong>Bottom row</strong> (BL+BR) — cannot separate the correct scheme from MC-04d; both assign BL=III, BR=IV.</li>
+        <li><strong>Diagonal pairs</strong> (TR+BL, TL+BR) — insufficient; TR+BL cannot separate the correct scheme from MC-04b.</li>
+        <li><strong>Three or more distinct-quadrant probes</strong> always resolve the scheme, since the fourth corner is then forced.</li>
+      </ul>
+    </div>
+
+    <h3>MC-05 omission</h3>
+
+    <p>MC-05 (Reflection Axis Confusion) is present in the master taxonomy template but omitted from the live set for this lesson, because the lesson contains no reflection task and the code therefore has nothing to fire on. The number is held rather than recycled. Renumbering would silently invalidate every marker attribute, test fixture, prompt, and stored code that references the existing set; the cost of an unused integer is lower than the cost of an ambiguous one. The same rule governs extension: a family is extended by sub-lettering (<code>MC-04d</code>, <code>CG-01a</code>), never by renumbering.</p>
+
+    <h3>Fallback handler</h3>
+
+    <p>Deterministic detection does not cover every stray plot, and it is not intended to. When no rule matches, the detector returns <code>null</code> and the conversation is routed to an <strong>unclassified handler</strong>: the model is told explicitly that no misconception was identified and is instructed to probe generically — <em>"walk me through how you placed that point"</em> — rather than asserting a diagnosis it cannot substantiate.</p>
+
+    <p>This is a deliberate design commitment. A system that always produces a label is a system that produces wrong labels, and a confidently wrong diagnosis is worse for a student than an honest question. The <code>null</code> return is a first-class outcome, not an error path.</p>
+
+    <h3>Comprehension gaps — the CG family</h3>
+
+    <p>The MC family covers errors the student has already made. The CG family covers confusion the student reports <em>before</em> or independent of any assessment — a student who has bounced off the material and has no wrong answer to diagnose. There is no detector and no evaluation order here: a comprehension gap is self-identified, the student points at a concept (a tapped term, an "I don't get this"), and the marker reader supplies it as <code>ctx.focus</code>. The five codes are a routing aid for <em>which rephrase move fits</em>, not a classifier.</p>
+
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th class="mono">Code</th><th>Gap</th><th>Move</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">CG-01</td><td>Definitional — "what <em>is</em> this?"</td><td>Rephrase the lesson's framing in concrete words anchored to a worked instance, then end on a check the student answers.</td></tr>
+          <tr><td class="mono">CG-02</td><td>Procedural — "how do I do this?"</td><td>A request about the <em>method</em> gets a conceptual rephrase; a request to do <em>this specific item</em> is the assessment question asked in advance, and is handed to decomposition instead.</td></tr>
+          <tr><td class="mono">CG-03</td><td>Rationale — "why is it like this?"</td><td>Connect the rule to what the student already knows, then ask them to predict a consequence. The prediction is the rung — do not lecture the reason.</td></tr>
+          <tr><td class="mono">CG-04</td><td>Prerequisite — the gap is upstream</td><td>Route up the concept graph using the marker <code>prereqEdges</code>: probe the prerequisite, rephrase it if shaky, confirm, then return to the named concept. One level at a time.</td></tr>
+          <tr><td class="mono">CG-05</td><td>Discrimination — two terms conflated</td><td>Do not state the distinction. Give a concrete case and ask the student to sort it; the contrast is drawn by their answer.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============================= 5 ============================= -->
+  <section class="doc" id="s5">
+    <p class="eyebrow">Section 5</p>
+    <h2>Deterministic Detection Layer</h2>
+
+    <p>The detection module is pure: no DOM, no network, no Firebase, no model. It is a function from four integers to a string or <code>null</code>.</p>
+
+    <h3>Signature</h3>
+
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th class="mono">Input</th><th>Type</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">target_x, target_y</td><td>integer</td><td>The point the task asked for.</td></tr>
+          <tr><td class="mono">plotted_x, plotted_y</td><td>integer</td><td>Where the student clicked.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>The function accepts either four positional integers or a single record object, normalizes the two forms, and throws a <code>TypeError</code> if any of the four values is not an integer. Non-integer input is a client wiring bug, not a student error, and is surfaced loudly rather than absorbed into a misconception code.</p>
+
+    <p><strong>Output:</strong> a misconception code string (<code>"MC-01"</code>, <code>"MC-02"</code>, <code>"MC-03"</code>, <code>"MC-06"</code>, <code>"MC-07"</code>, <code>"MC-08"</code>) or <code>null</code>. <code>null</code> is returned in two distinct situations: the plot is correct, or no rule matched. Both mean "do not assert a misconception," and the caller distinguishes them by checking correctness separately.</p>
+
+    <h3>Rules, in evaluation order</h3>
+
+    <p>Each predicate is written to be true on its own signature in isolation. Precedence between overlapping signatures is handled entirely by order, never by conditions inside the predicates — which keeps each rule independently readable and independently testable.</p>
+
+    <p class="pre-label">Guard — evaluated before the chain</p>
+    <pre><code>if (plotted_x === target_x &amp;&amp; plotted_y === target_y) return null;   // correct plot</code></pre>
+
+    <p class="pre-label">1 · MC-01 — Axis Transposition</p>
+    <pre><code>target_x !== target_y
+  &amp;&amp; plotted_x === target_y
+  &amp;&amp; plotted_y === target_x</code></pre>
+    <p>The <code>target_x !== target_y</code> guard excludes symmetric pairs such as <span class="pair">(<span class="x">3</span>, <span class="y">3</span>)</span>, where a swap is unobservable and any match would be spurious.</p>
+
+    <p class="pre-label">2 · MC-07 — Axis-as-Boundary</p>
+    <pre><code>(target_x === 0 &amp;&amp; plotted_x !== 0)
+  || (target_y === 0 &amp;&amp; plotted_y !== 0)</code></pre>
+
+    <p class="pre-label">3 · MC-08 — Incomplete Plot / Axis Collapse</p>
+    <pre><code>target_x !== 0 &amp;&amp; target_y !== 0
+  &amp;&amp; (plotted_x === 0 || plotted_y === 0)</code></pre>
+
+    <p class="pre-label">4 · MC-06 — Magnitude / Sign Conflation</p>
+    <pre><code>abs(plotted_x) === abs(target_x)
+  &amp;&amp; abs(plotted_y) === abs(target_y)
+  &amp;&amp; !(plotted_x === target_x &amp;&amp; plotted_y === target_y)</code></pre>
+
+    <p class="pre-label">5 · MC-02 — Sign / Directionality Error</p>
+    <pre><code>(target_x !== 0 &amp;&amp; plotted_x === -target_x)
+  || (target_y !== 0 &amp;&amp; plotted_y === -target_y)</code></pre>
+    <p>The <code>target !== 0</code> guards prevent a negative-zero false positive. Because MC-06 has already run, the exact-mirror case is gone by this point; what reaches MC-02 is a sign flip on one axis with the other axis also wrong in magnitude.</p>
+
+    <p class="pre-label">6 · MC-03 — Origin / Offset Error</p>
+    <pre><code>dx = plotted_x - target_x
+dy = plotted_y - target_y
+(dx !== 0 || dy !== 0) &amp;&amp; abs(dx) &lt;= 1 &amp;&amp; abs(dy) &lt;= 1</code></pre>
+    <p>This is the <strong>single-point proxy</strong> for the taxonomy's "consistent off-by-one shift across several plots." A constant offset cannot be verified from one plot, so the implemented rule is deliberately conservative: only exact ±1 offsets qualify. Anything looser falls through to the fallback rather than being labeled on thin evidence. Widening this rule would trade a small gain in coverage for a large loss in precision, and precision is what makes the label worth acting on.</p>
+
+    <p class="pre-label">Separate detector · MC-04 — quadrant naming</p>
+    <pre><code>detectQuadrantError(corner, named)
+  corner ∈ { "TR", "TL", "BL", "BR" }     // derived from the signs of the coordinates
+  named  ∈ { "I", "II", "III", "IV" }     // the Roman numeral the student assigned
+
+  if named matches the correct scheme for corner  → null
+  else return the first scheme in [MC-04a, MC-04b, MC-04c, MC-04d]
+       whose mapping for corner equals named
+  if no scheme matches                            → null   (unclassified)</code></pre>
+    <p>This detector is a table lookup against the five candidate schemes. A single response identifies a best guess; disambiguating between schemes that agree on the probed corner requires a second probe from the appropriate column (Section 4).</p>
+
+    <h3>Why deterministic rather than learned</h3>
+
+    <p>At this scope a classifier would be strictly worse, and not marginally so.</p>
+
+    <ul>
+      <li><strong>The error space is small, closed, and known.</strong> Coordinate plotting on a −5..5 integer grid admits a bounded set of procedural failures, each with an exact algebraic signature. There is nothing here for a model to discover that a curriculum specialist has not already named.</li>
+      <li><strong>Rules are exhaustively verifiable.</strong> Every target–plot pair on the grid can be enumerated and the detector's output checked against the taxonomy. No classifier offers that guarantee.</li>
+      <li><strong>Behavior is reproducible.</strong> The same input yields the same code on every run, on every machine, forever. Tutoring behavior can be regression-tested; a change in scaffolding is traceable to a change in a rule.</li>
+      <li><strong>No training data is required</strong> — therefore no collection of student work, no labeling pipeline, no cold-start problem, and no drift.</li>
+      <li><strong>The rules are legible to educators.</strong> A teacher can read "the student plotted the mirror of the target with both distances correct" and either agree or object. The rule is the explanation; there is no post-hoc interpretability layer, because there is nothing opaque to interpret.</li>
+      <li><strong>It runs client-side in microseconds</strong> with no inference cost and no network round trip, which is why classification can complete before any data leaves the browser.</li>
+    </ul>
+
+    <h3>Boundary condition — free text</h3>
+
+    <div class="callout">
+      <p><strong>Deterministic detection ends where structured input ends.</strong> The rules above operate on a plotted coordinate — a constrained response with an exact algebraic relationship to the target. A student who instead types <em>"I went up 3 and then over 2 but the minus confused me"</em> has produced a response with no such relationship. There is no rule to write.</p>
+      <p>This is a real limit of the approach, not a temporary implementation gap. Classifying free-text mathematical reasoning into a misconception taxonomy is a natural-language classification problem, and it is the boundary at which a trained classifier becomes the right tool rather than a redundant one. The architecture anticipates that boundary: because classification is an isolated layer with a fixed contract — response in, code out — a text classifier can be added as a sibling detector, emitting codes into the same taxonomy and the same generation pipeline, without altering the generation layer at all. In this demo, free-text input is routed to the unclassified handler.</p>
+    </div>
+  </section>
+
+  <!-- ============================= 6 ============================= -->
+  <section class="doc" id="s6">
+    <p class="eyebrow">Section 6</p>
+    <h2>Scaffolding Generation Rules</h2>
+
+    <p>The model's role is bounded by contract. It receives a misconception code and marker context; it does not determine what the student got wrong, and it is not asked to. Its task is to produce the next single rung of a scaffold aimed at an already-identified target.</p>
+
+    <p>The system prompt is assembled server-side from the behavioral contract plus a session context block carrying the code, the task type, and the marker context. The rules below are the contract. They are not stylistic preferences; they are the conditions under which the output is pedagogically valid, and relaxing any of them changes what the system is.</p>
+
+    <h3>Two modes</h3>
+
+    <p>Hegemon is a scaffolding guide, not an answer key. It operates in two modes, which are one continuous guide rather than two bots — a student can hit comprehension support while reading, then misconception correction after plotting wrong.</p>
+
+    <ul>
+      <li><strong>Comprehension support</strong> — the student signals confusion about something they are <em>reading</em>, before or independent of any assessment. Technique: <strong>rephrase</strong>. Re-present the instructional content in more digestible form, toward a question. The terminal question is a <em>check</em>: the student applies the just-rephrased idea to confirm it landed.</li>
+      <li><strong>Misconception correction</strong> — the student's response reveals a procedural <em>error</em>. Technique: <strong>decompose</strong>. Break the question into smaller sub-questions. The terminal question <em>elicits the withheld answer</em>: the rungs lead up to the assessed result and the student supplies the last step.</li>
+    </ul>
+
+    <h3>The rules</h3>
+
+    <ol class="rules">
+      <li><strong>Never state the assessed item.</strong> The bar is on the specific result the task checks — <em>which</em> quadrant, <em>which</em> coordinate, <em>which</em> point. Definitions and conventions are <strong>not</strong> the assessed item; they are the rungs that lead to it, and the system surfaces them freely. The word "axes," the I–IV numbering scheme, and "across-then-up" order are conventions — re-surfacing them is rephrasing, not answering.</li>
+      <li><strong>Every rung ends in a question</strong> the student answers.</li>
+      <li><strong>One rung per turn.</strong> The student responds before the next rung appears. No front-loading of multiple hints.</li>
+      <li><strong>Stop early.</strong> The moment the student can carry it, hand off — the minimum rungs, never a full walk-through. The failure mode to avoid is ten minutes of step-by-step that a student <em>extracts</em> instead of two minutes spent thinking.</li>
+      <li><strong>One component at a time.</strong> Compound errors are addressed in sequence — surface one, resolve it, confirm, then move to the next. MC-04c is two errors at once (wrong start corner and wrong direction); the system scaffolds the start corner to resolution before mentioning direction. Never stack two corrections in one prompt.</li>
+      <li><strong>Acknowledge before redirecting.</strong> Never a cold "try again." What the student did is acknowledged before the redirect. For MC-06 specifically, both distances from the origin are correct and the acknowledgment says so — that is the whole pedagogical difference between MC-06 and MC-02.</li>
+      <li><strong>Confirm the student's selection</strong> before continuing.</li>
+      <li><strong>Charitable interpretation.</strong> Ambiguous input produces 3–4 plausible numbered interpretations, always ending with an open "in your own words" option; the system confirms the pick before proceeding. The student is never told they were unclear.</li>
+      <li><strong>Zero-coordinate responses are always correct on direction.</strong> When a coordinate value is 0, any directional qualifier is vacuously true — "0 up" and "0 down" are equally correct for y = 0. Do not redirect. This applies especially when the system itself introduced the directional language; the student is answering in the terms the question provided.</li>
+      <li><strong>Coordinate value as positional answer.</strong> When a student answers a question about <em>which</em> coordinate by giving a coordinate <em>value</em>, identify which position that value occupies in the ordered pair and treat the answer as a positional claim, then evaluate that claim. If the target is <span class="pair">(<span class="x">−3</span>, <span class="y">2</span>)</span> and the question is which coordinate moves left or right, the answer "−3" identifies the first coordinate — which is correct.</li>
+      <li><strong>Plain vocabulary.</strong> Language a ten-year-old would use naturally. "Relative" is banned: "above or below the x-axis," not "relative to the x-axis." Never join two questions with "and," "but," or "so" — if a draft contains "and" connecting two things the student must answer, everything after "and" is deleted and saved for the next turn.</li>
+    </ol>
+
+    <h3>Worked example — assessment mode, MC-04</h3>
+
+    <p>The student was asked to label the quadrants and is stuck. Rungs are delivered one per turn; the student answers each before the next appears. Start and direction are addressed separately (rule 5), and the system hands off the moment the pattern is established (rule 4). Direction is framed through <em>sign changes</em>, not "counterclockwise" — the assessment measures the sign-to-quadrant link, so the feedback uses the same concept.</p>
+
+    <div class="turn bot"><span class="who">Rung 1 · Hegemon</span><p>The axes split the grid into four numbered quadrants. The numbering has two parts — where it starts, and which way it goes. Start with where it starts.</p></div>
+    <p class="interstitial">student responds</p>
+    <div class="turn bot"><span class="who">Rung 2 · Hegemon</span><p>Quadrant I is the corner where both coordinates are positive. <strong>Which corner is that?</strong></p></div>
+    <p class="interstitial">student responds · system confirms the answer before continuing</p>
+    <div class="turn bot"><span class="who">Rung 3 · Hegemon</span><p>From Quadrant I, the next number sits where x flips negative but y stays positive. <strong>Which corner gets II?</strong></p></div>
+    <p class="interstitial">student responds · system confirms the answer before continuing</p>
+    <div class="turn bot"><span class="who">Rung 4 · Hegemon</span><p>You've got the rule now — <strong>where do III and IV land?</strong></p></div>
+
+    <p>Every rung states a convention and makes the student supply which corner is which. At no point is a quadrant assignment stated by the system.</p>
+
+    <h3>Worked example — comprehension mode</h3>
+
+    <div class="turn student"><span class="who">Student · taps "axes"</span><p>I don't get "axes."</p></div>
+    <div class="turn bot"><span class="who">Hegemon</span><p>"Axes" is just the plural of "axis" — the lesson crossed two number lines to build the grid, and each of those lines is one axis. One runs side to side, the other up and down. Which one would you call the <em>across</em> line?</p></div>
+
+    <p>The label is re-surfaced (a convention, not an answer), the concept is rephrased concretely, and the turn ends on a check the student answers.</p>
+
+    <h3>Two quadrant task formats</h3>
+
+    <p>Quadrant tasks arrive in two shapes, distinguished by whether the payload carries a coordinate. The absence of a coordinate <em>is</em> the signal; the client omits it deliberately for that format.</p>
+
+    <ul>
+      <li><strong>Name recall</strong> (no coordinate) — the student was given a quadrant <em>number</em> and asked to click its location. The assessed item is <em>where</em> the quadrant sits. Scaffold via the numbering frame: anchor Quadrant I by the all-positive rule, then reason one sign change per transition. Never reference a coordinate — the student never saw one.</li>
+      <li><strong>Coordinate identification</strong> (coordinate present) — the student was shown a point and asked <em>which</em> quadrant contains it. Scaffold from the coordinate's signs: x's sign gives left/right, y's sign gives up/down, one coordinate per turn.</li>
+    </ul>
+
+    <h3>Server-side enforcement</h3>
+
+    <p>The contract is enforced structurally as well as by prompt. The proxy validates that the misconception code matches the expected pattern, that the conversation history is a non-empty array ending in a user message, that no message exceeds the permitted roles, and that history length stays within a bounded window. Output length is capped so a single response cannot expand into a multi-rung walk-through, which is the most likely way rule 3 would fail in practice.</p>
+  </section>
+
+  <!-- ============================= 7 ============================= -->
+  <section class="doc" id="s7">
+    <p class="eyebrow">Section 7</p>
+    <h2>Two-Stage Pipeline Distinction</h2>
+
+    <p>This section states explicitly what the Hegemon architecture is and is not, because the surface resemblance to two adjacent categories of system — predictive analytics platforms and LLM-classifier tutors — obscures differences that are architectural rather than incidental.</p>
+
+    <h3>Classification of an observed action, not prediction of a future one</h3>
+
+    <p>Hegemon classifies <strong>an action the student has already taken</strong>. The input is a plotted coordinate that exists; the output names the procedural error that produced it. The system makes no claim about what the student will do next, what grade they will earn, whether they are at risk, or how they compare to a cohort.</p>
+
+    <p>This is the load-bearing distinction from early-warning and predictive-intervention systems. Those systems model a student trajectory from accumulated history and output a forecast — a risk score, a completion probability, a recommended intervention tier. They require longitudinal data by construction; the forecast <em>is</em> a function of history. Hegemon's diagnosis is a function of exactly one response and the coordinate it was compared against. Nothing about the student's past is an input, because nothing about the student's past is relevant to the question <em>"is this specific plot a transposition or a sign error?"</em></p>
+
+    <h3>No historical data, no repository, no student records</h3>
+
+    <ul>
+      <li><strong>No training data.</strong> The detection rules were authored from the taxonomy. No student work was collected or labeled to produce them, and none is needed to maintain them.</li>
+      <li><strong>No data repository.</strong> The system has no student database. Marker state lives in browser <code>sessionStorage</code> and expires with the tab. The server persists exactly one kind of record — a per-IP request counter for rate limiting, keyed to an IP hash and a window start, containing no student work of any kind.</li>
+      <li><strong>No accumulated records.</strong> Detection is stateless across sessions and across items. The same plot yields the same code whether it is the student's first attempt or their fiftieth.</li>
+      <li><strong>No identity.</strong> There are no accounts, no logins, and no identifiers linking one response to another.</li>
+    </ul>
+
+    <h3>The deterministic layer is not a model</h3>
+
+    <p>The detection layer is roughly a hundred lines of ordinary JavaScript: comparisons, absolute values, and a fixed-order loop. It is not a transformer, not a neural network, not a statistical classifier of any kind. It has no parameters, no weights, no training procedure, and no inference step. Its behavior is fully specified by the rules in Section 5 and is exhaustively enumerable over the finite grid.</p>
+
+    <div class="callout y">
+      <p><strong>Two stages, two technologies, one direction of flow.</strong> Stage one — deterministic rules — decides <em>what is wrong</em>. Stage two — a language model — decides <em>how to ask about it</em>. The output of stage one is an input to stage two. Nothing flows the other way. The model's generation never becomes a diagnosis, is never stored as one, and cannot influence the code that produced it.</p>
+    </div>
+
+    <h3>Generation only — an architectural constraint</h3>
+
+    <p>That the model does not classify is a property of the system's construction, not a limitation of the model. Claude is fully capable of attempting a diagnosis; the architecture declines to ask it for one, and the input contract gives it nowhere to put one. The system prompt supplies a code that has already been determined. The conversation carries no request to identify an error type. The response contract accepts a single Socratic rung and nothing else — there is no field in which a competing classification could be returned, and no consumer that would read it.</p>
+
+    <p>The constraint is what buys the properties the system depends on: reproducible diagnosis, auditable rules, regression-testable tutoring behavior, and a classification step that can be verified without invoking a model at all. A system in which the model classifies has none of these, regardless of how well the model classifies.</p>
+
+    <h3>FERPA implication</h3>
+
+    <p>Because classification completes in the browser before any network call, the data crossing the boundary to the model API is: a misconception code from a fixed vocabulary, a list of lesson topic identifiers, a prerequisite adjacency list, and the tutoring conversation itself. The student's plotted coordinate, the target coordinate, their score, their history, and their identity are not transmitted.</p>
+
+    <p>The architectural point is stronger than the current implementation. Because the diagnostic step is separable and requires no model, <strong>the whole classification stage can run on local or district-controlled infrastructure</strong>, with only an anonymized code reaching a third-party API — or, with a locally hosted model, nothing leaving at all. A system in which the model performs classification cannot make this separation, because the raw student response must reach the model for classification to occur. The separation is available here precisely because the two stages were built as two stages.</p>
+
+    <div class="callout">
+      <p><strong>Scope note.</strong> This describes the architecture's properties, not a compliance certification. Deployment in a school setting requires its own review; the point here is that the architecture does not foreclose that review by construction.</p>
+    </div>
+  </section>
+
+  <!-- ============================= 8 ============================= -->
+  <section class="doc" id="s8">
+    <p class="eyebrow">Section 8</p>
+    <h2>Prior Art Search Notes</h2>
+
+    <p>The publications below were reviewed during the design of this system. For each, the distinguishing factor is stated with respect to the architecture disclosed above — principally the separation of deterministic classification from generative scaffolding, the authoring-time marker graph, and the absence of any historical student data requirement.</p>
+
+    <div class="callout">
+      <p><strong>To be completed before publication.</strong> Populate the table below from the prior art search notes. Each row should carry the publication number, the title, and a specific distinguishing factor — not a general statement of difference. Delete this callout once the table is filled.</p>
+    </div>
+
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr><th class="mono">Publication no.</th><th>Title</th><th>Distinguishing factors</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono"><span class="ph">[PUB NO.]</span></td>
+            <td><span class="ph">[TITLE]</span></td>
+            <td><span class="ph">[DISTINGUISHING FACTORS]</span></td>
+          </tr>
+          <tr>
+            <td class="mono"><span class="ph">[PUB NO.]</span></td>
+            <td><span class="ph">[TITLE]</span></td>
+            <td><span class="ph">[DISTINGUISHING FACTORS]</span></td>
+          </tr>
+          <tr>
+            <td class="mono"><span class="ph">[PUB NO.]</span></td>
+            <td><span class="ph">[TITLE]</span></td>
+            <td><span class="ph">[DISTINGUISHING FACTORS]</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Recurring distinguishing factors</h3>
+
+    <p>Across the categories reviewed, the same three separations recur as points of distinction. They are recorded here as the framework against which each publication above should be assessed:</p>
+
+    <ol>
+      <li><strong>Classification technology.</strong> Systems that classify student error with a trained model — statistical, neural, or LLM-based — differ from a system whose classification stage is a deterministic rule set with no parameters and no training procedure (Section 5).</li>
+      <li><strong>Data requirement.</strong> Systems whose diagnosis is a function of accumulated student history differ from a system whose diagnosis is a function of a single observed response and the target it is compared against, with no repository and no longitudinal record (Section 7).</li>
+      <li><strong>Content annotation and its use.</strong> Systems that infer instructional structure by scanning content at runtime, or that require the student to self-report the locus of confusion, differ from a system in which the concept graph — topic, prerequisites, and likely misconceptions — is embedded in the instructional content at authoring time and read from scroll position at activation (Section 3).</li>
+    </ol>
+  </section>
+
+  <!-- ============================= 9 ============================= -->
+  <section class="doc" id="s9">
+    <p class="eyebrow">Section 9</p>
+    <h2>Publication and Timestamp</h2>
+
+    <p>This disclosure is published to establish prior art in the architecture described above. Publication is evidenced by three independent records.</p>
+
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th class="mono">Record</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="mono">Repository</td>
+            <td><a href="https://github.com/purramid-learning/Hegemon-Learning-Guide">https://github.com/purramid-learning/Hegemon-Learning-Guide</a></td>
+          </tr>
+          <tr>
+            <td class="mono">First commit</td>
+            <td>2026-06-28 — the repository's commit history is a public, independently verifiable record of when each component of this architecture was authored.</td>
+          </tr>
+          <tr>
+            <td class="mono">Disclosure published</td>
+            <td><span class="ph">[PUBLICATION DATE]</span></td>
+          </tr>
+          <tr>
+            <td class="mono">Internet Archive</td>
+            <td>This page has been submitted to the Internet Archive Wayback Machine for independent timestamp verification.</td>
+          </tr>
+          <tr>
+            <td class="mono">LinkedIn disclosure</td>
+            <td><span class="ph">[LINKEDIN POST URL]</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Source of truth</h3>
+
+    <p>This page is a narrative disclosure. The authoritative artifacts are the repository files themselves, each of which is timestamped by its own commit history:</p>
+
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th class="mono">File</th><th>Role</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">src/coordinate-plane-lesson.html</td><td>Student-facing lesson; source of <code>hg-marker</code> learner-state data</td></tr>
+          <tr><td class="mono">src/plotting-grid.html</td><td>Student-facing practice grid; source of all detection inputs</td></tr>
+          <tr><td class="mono">src/js/misconception-detection.js</td><td>Deterministic detector; <code>detectMisconception(record)</code> → code or <code>null</code></td></tr>
+          <tr><td class="mono">src/js/marker-reader.js</td><td>Reads <code>hg-marker</code> elements; packages bot context; persists to <code>sessionStorage</code></td></tr>
+          <tr><td class="mono">src/js/hegemon-bot.js</td><td>Bot client; request assembly and conversation state</td></tr>
+          <tr><td class="mono">functions/index.js</td><td>Firebase Cloud Function proxy; rate limiting, validation, system prompt assembly</td></tr>
+          <tr><td class="mono">docs/scaffolding-contract.md</td><td>Single source of truth for scaffolding input/output rules</td></tr>
+          <tr><td class="mono">docs/misconception-taxonomy.md</td><td>Full MC taxonomy with diagnostic rules and scaffolding goals</td></tr>
+          <tr><td class="mono">docs/concept-scaffold.md</td><td>CG taxonomy</td></tr>
+          <tr><td class="mono">tests/</td><td>Dependency-free Node harnesses over the pure modules</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Status of the implementation</h3>
+
+    <p>The system described here is a working proof of concept, not a shipped product. The detection layer, marker system, proxy, and scaffolding contract are implemented and tested as described. The scope is a single lesson: four quadrants, integer coordinates, grid extent −5..5. Adaptive item sequencing, reflection tasks, scale and interval errors, and machine-learned classification of free-text responses are documented as out of scope for this demonstration and are not implemented. This disclosure describes the architecture as built; where a capability is anticipated rather than present, it is identified as such in the section that discusses it.</p>
+  </section>
+
+</main>
+
+<footer class="wrap">
+  <p>Hegemon Learning Guide · Technical Disclosure</p>
+  <p>© 2026 Joseph L. Selby, Purramid Learning®, Inc. · Source released under the Apache License 2.0</p>
+</footer>
+
+</body>
+</html>
