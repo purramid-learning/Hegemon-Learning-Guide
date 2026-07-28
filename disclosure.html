@@ -354,13 +354,6 @@
     border-left:2px dotted var(--line);
   }
 
-  /* ---------- placeholders ---------- */
-  .ph{
-    font-family:var(--font-mono);font-size:.85em;font-weight:700;
-    background:#fff4d6;border:1px dashed #c9a227;color:#7a5c00;
-    border-radius:5px;padding:1px 7px;white-space:nowrap;
-  }
-
   /* ---------- footer ---------- */
   footer{
     border-top:2px solid var(--line);
@@ -414,7 +407,6 @@
     ol.rules > li::before{background:#fff!important;color:#000!important;border:1pt solid #000}
     .interstitial{color:#000!important}
     .interstitial::before{border-left-color:#999!important}
-    .ph{background:#fff!important;border:1pt dashed #000!important;color:#000!important}
     .dg-box{fill:#fff!important;stroke:#000!important}
     .dg-box.neutral{stroke:#666!important}
     .dg-title,.dg-sub,.dg-tag,.dg-lbl{fill:#000!important}
@@ -442,7 +434,7 @@
       </div>
       <div>
         <dt>Publication date</dt>
-        <dd><span class="ph">[PUBLICATION DATE]</span></dd>
+        <dd>July 13, 2026</dd>
       </div>
       <div>
         <dt>Repository</dt>
@@ -519,9 +511,11 @@
 
     <p>Two student-facing surfaces feed the pipeline. The <strong>lesson page</strong> carries instructional content interleaved with invisible <code>hg-marker</code> elements (Section 3); as the student scrolls, a reader module records which markers have been passed and persists that record to <code>sessionStorage</code>. The <strong>practice grid</strong> presents a target coordinate and accepts a click-to-plot response.</p>
 
-    <p>When the student plots a point, the plotted coordinate and the target coordinate are passed to the detection module, which returns a misconception code or <code>null</code>. The code, the marker context package, and the conversation history are posted to a Firebase Cloud Function. That function validates the payload shape, checks the request origin against an allow-list, enforces a per-IP rate limit through a Firestore transaction, assembles the system prompt from the behavioral contract and the session context block, and calls the Claude API using a key held in Cloud Functions secret configuration. The key is never present in client code. The response — a single Socratic rung — is returned to the browser and rendered in the bot panel.</p>
+    <p>When the student plots a point, the plotted coordinate and the target coordinate are passed to the detection module, which returns a misconception code or <code>null</code>. Misconception correction is gated behind an incorrect-response counter — it opens on the second wrong answer in an item group, not the first — so a student who self-corrects is not interrupted. Comprehension support has two ungated entry routes of its own (Section 6).</p>
 
-    <p>The student answers, the answer is appended to the conversation history, and the cycle repeats until the student resolves the item. The misconception code is set once, at conversation start, and carried unchanged through the conversation; subsequent turns do not re-classify.</p>
+    <p>On activation, the code, the marker context package, and the conversation history are posted to a Firebase Cloud Function. That function validates the payload shape, checks the request origin against an allow-list, enforces a per-IP rate limit through a Firestore transaction, assembles the system prompt from the invariant rule block and a runtime session-context block, and calls the Claude API using a key held in Cloud Functions secret configuration. The key is never present in client code. On return, the function parses the generation: it extracts bracketed control tokens, strips them from the learner-visible text, and returns the cleaned rung together with structured flags the client uses to drive interface behavior.</p>
+
+    <p>The student answers, the answer is appended to the conversation history, and the cycle repeats until the item resolves, the student dismisses the guide, or the scaffold stalls and escalates to a human teacher. The misconception code is set once, at conversation start, and carried unchanged through the conversation; subsequent turns do not re-classify.</p>
 
     <div class="figure">
       <svg viewBox="0 0 880 762" role="img" aria-labelledby="dg-title dg-desc">
@@ -570,7 +564,7 @@
         <rect class="dg-box server" x="60" y="420" width="770" height="92" rx="12"/>
         <text class="dg-title" x="78" y="448">Firebase Cloud Function — scaffold</text>
         <text class="dg-sub" x="78" y="468">origin allow-list · payload validation · per-IP rate limit (Firestore transaction)</text>
-        <text class="dg-sub" x="78" y="485">system prompt assembly · API key in secret config, never sent to the client</text>
+        <text class="dg-sub" x="78" y="485">prompt assembly · control-token extraction · API key in secret config, never sent to client</text>
 
         <!-- Row 5: Claude -->
         <rect class="dg-box server" x="245" y="548" width="390" height="66" rx="12"/>
@@ -579,8 +573,8 @@
 
         <!-- Row 6: bot UI -->
         <rect class="dg-box client" x="60" y="672" width="770" height="62" rx="12"/>
-        <text class="dg-title" x="78" y="700">Bot panel</text>
-        <text class="dg-sub" x="78" y="720">one Socratic rung rendered · student answers</text>
+        <text class="dg-title" x="78" y="700">Docked scaffolding panel</text>
+        <text class="dg-sub" x="78" y="720">one rung rendered · assessment grid stays live for demonstration</text>
 
         <!-- request arrows (solid, downward) -->
         <path class="dg-arrow" d="M240,96 L240,140" marker-end="url(#ah)"/>
@@ -1130,9 +1124,49 @@ dy = plotted_y - target_y
       <li><strong>Coordinate identification</strong> (coordinate present) — the student was shown a point and asked <em>which</em> quadrant contains it. Scaffold from the coordinate's signs: x's sign gives left/right, y's sign gives up/down, one coordinate per turn.</li>
     </ul>
 
+    <h3>Activation — three routes, one gated</h3>
+
+    <p>The guide does not open on every wrong answer. Opening on the first error interrupts a student who was going to self-correct on the second attempt, which is the more valuable event. There are three entry conditions:</p>
+
+    <ul>
+      <li><strong>Term activation</strong> — the student taps a marked term in the lesson. Opens directly into comprehension support, with the tapped term resolved to a topic and supplied as <code>ctx.focus</code>.</li>
+      <li><strong>Persistent help control</strong> — the student opens the guide unprompted. Opens into comprehension support; because no term was named, the student is offered a topic disambiguation list built from the markers they have passed.</li>
+      <li><strong>Error threshold</strong> — gated by an incorrect-response counter. Misconception correction opens after <strong>two</strong> wrong answers within the same item group, not on the first. The counter resets on a correct answer.</li>
+    </ul>
+
+    <h3>Control tokens</h3>
+
+    <p>The model's output carries a small closed vocabulary of bracketed control tokens. The proxy extracts them, strips them from the learner-visible text, and returns them as structured boolean fields alongside the response; the client reads those fields to drive interface behavior. The learner never sees a token.</p>
+
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th class="mono">Token</th><th>Effect</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">[CHOICES]</td><td>Emitted with a numbered list of 3–4 interpretations; the client renders them as selectable buttons. This is the mechanical implementation of rule 8, and its use is restricted to charitable interpretation — numbered lists are not permitted anywhere else in the output.</td></tr>
+          <tr><td class="mono">[GRID_PROMPT]</td><td>Requests that the student demonstrate a move by clicking the live assessment grid rather than describing it in words. Assessment mode only.</td></tr>
+          <tr><td class="mono">[QUADRANT_PROMPT]</td><td>Requests a quadrant selection on the live grid. Assessment mode only.</td></tr>
+          <tr><td class="mono">[NEXT_QUESTION]</td><td>Marks the scaffold resolved and surfaces the advance control.</td></tr>
+          <tr><td class="mono">[DISMISSED]</td><td>Emitted when the student signals they are done ("I get it," "never mind"). Scaffolding stops immediately; no follow-up question is asked.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>The grid tokens exist because of a constraint the contract imposes: the guide is forbidden from asking a student to point at, trace, circle, or otherwise physically interact with a grid, because the dialogue panel contains no grid to point at. All guidance must be expressible in words alone — <em>except</em> through these two tokens, which direct the student to the real assessment grid. This is possible because the panel is <strong>docked rather than modal</strong>: the assessment region stays live and interactive while the dialogue is open, so the student's click lands on the same grid they are being assessed on and re-enters the conversation as an input.</p>
+
+    <h3>Escalation — the terminal path</h3>
+
+    <p>Scaffolding can fail. When it does, the system's terminating move is to defer to a human, never to supply the answer:</p>
+
+    <ul>
+      <li><strong>Stall.</strong> If the student has been stuck on the same rung for two or more turns, the guide first tries a different angle — a more concrete example, a simpler sub-question — rather than repeating itself. If that also fails to produce progress, it escalates: <em>"This might be a good time to ask your teacher for help."</em></li>
+      <li><strong>Failed demonstration.</strong> If a grid or quadrant demonstration comes back wrong, the guide escalates on the very next turn rather than re-scaffolding with further questions. The single exception is MC-03, whose scaffold is a three-step sequence (origin, then x-axis, then the full point); there, a wrong step may be re-prompted once with the relevant definition supplied freely, and escalates if the same step fails again.</li>
+    </ul>
+
+    <p>The escalation is detected server-side by pattern-matching the generated text and returned as a flag, which the client renders as a visually distinct turn. Rule 1 holds through the escalation: the terminal state of a failed scaffold is a referral to a teacher, not a disclosure of the assessed item. There is no state in this system that supplies the answer.</p>
+
     <h3>Server-side enforcement</h3>
 
-    <p>The contract is enforced structurally as well as by prompt. The proxy validates that the misconception code matches the expected pattern, that the conversation history is a non-empty array ending in a user message, that no message exceeds the permitted roles, and that history length stays within a bounded window. Output length is capped so a single response cannot expand into a multi-rung walk-through, which is the most likely way rule 3 would fail in practice.</p>
+    <p>The contract is enforced structurally as well as by prompt. The proxy validates that the misconception code matches the expected pattern, that the conversation history is a non-empty array ending in a user message, that every message carries a permitted role and non-empty string content, and that history length stays within a bounded window. Output length is capped so a single response cannot expand into a multi-rung walk-through, which is the most likely way rule 3 would fail in practice. Post-generation, the proxy strips control tokens and normalizes punctuation deterministically before the text reaches the learner.</p>
   </section>
 
   <!-- ============================= 7 ============================= -->
@@ -1148,14 +1182,45 @@ dy = plotted_y - target_y
 
     <p>This is the load-bearing distinction from early-warning and predictive-intervention systems. Those systems model a student trajectory from accumulated history and output a forecast — a risk score, a completion probability, a recommended intervention tier. They require longitudinal data by construction; the forecast <em>is</em> a function of history. Hegemon's diagnosis is a function of exactly one response and the coordinate it was compared against. Nothing about the student's past is an input, because nothing about the student's past is relevant to the question <em>"is this specific plot a transposition or a sign error?"</em></p>
 
-    <h3>No historical data, no repository, no student records</h3>
+    <h3>No historical data in the diagnostic path</h3>
+
+    <p>The claim here is specific and should be read narrowly: <strong>the diagnostic path reads no stored record.</strong></p>
 
     <ul>
       <li><strong>No training data.</strong> The detection rules were authored from the taxonomy. No student work was collected or labeled to produce them, and none is needed to maintain them.</li>
-      <li><strong>No data repository.</strong> The system has no student database. Marker state lives in browser <code>sessionStorage</code> and expires with the tab. The server persists exactly one kind of record — a per-IP request counter for rate limiting, keyed to an IP hash and a window start, containing no student work of any kind.</li>
-      <li><strong>No accumulated records.</strong> Detection is stateless across sessions and across items. The same plot yields the same code whether it is the student's first attempt or their fiftieth.</li>
-      <li><strong>No identity.</strong> There are no accounts, no logins, and no identifiers linking one response to another.</li>
+      <li><strong>No repository read.</strong> Detection's only inputs are the target coordinate and the plotted coordinate for the item in front of the student. It queries no database, consults no profile, and has no access to prior items. Marker state lives in browser <code>sessionStorage</code> and expires with the tab.</li>
+      <li><strong>Stateless across sessions and items.</strong> The same plot yields the same code whether it is the student's first attempt or their fiftieth. No mastery estimate, learner profile, or trajectory is computed or stored.</li>
+      <li><strong>No identity in the pipeline.</strong> The scaffolding endpoint receives no account, no login, and no identifier linking one response to another.</li>
     </ul>
+
+    <h3>What the server does persist — stated in full</h3>
+
+    <p>Accuracy on this point matters more than a stronger-sounding claim, so the server's writes are enumerated rather than characterized. The demonstration deployment persists three kinds of record, none of which is an input to detection or to scaffolding:</p>
+
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th class="mono">Collection</th><th>Contents</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="mono">rate_limits</td>
+            <td>A per-IP request counter and window start. No student work of any kind.</td>
+            <td>Abuse control on the public demo endpoint.</td>
+          </tr>
+          <tr>
+            <td class="mono">demo_visitors</td>
+            <td>Optional self-supplied name, organization, and email from the landing page, plus a transcript opt-in flag.</td>
+            <td>Demonstration lead capture. Supplied by the adult evaluating the demo, not by a student, and optional in full.</td>
+          </tr>
+          <tr>
+            <td class="mono">transcripts</td>
+            <td>The tutoring conversation, written <strong>only</strong> when the session carries an affirmative opt-in. The opt-in flag is re-verified server-side against the visitor record before any write; a client cannot forge it, and non-opted-in sessions are discarded silently.</td>
+            <td>Reviewing scaffolding quality during the demonstration. Not read back by any part of the running system.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>These are properties of a public demonstration deployment — lead capture and opt-in quality review — not of the tutoring architecture. Removing all three would leave detection and scaffolding functionally unchanged, which is the test that distinguishes an architectural data requirement from a deployment convenience. A predictive system cannot pass that test: remove its learner record and the prediction cannot be computed at all.</p>
 
     <h3>The deterministic layer is not a model</h3>
 
@@ -1167,7 +1232,9 @@ dy = plotted_y - target_y
 
     <h3>Generation only — an architectural constraint</h3>
 
-    <p>That the model does not classify is a property of the system's construction, not a limitation of the model. Claude is fully capable of attempting a diagnosis; the architecture declines to ask it for one, and the input contract gives it nowhere to put one. The system prompt supplies a code that has already been determined. The conversation carries no request to identify an error type. The response contract accepts a single Socratic rung and nothing else — there is no field in which a competing classification could be returned, and no consumer that would read it.</p>
+    <p>That the model does not classify is a property of the system's construction, not a limitation of the model. Claude is fully capable of attempting a diagnosis; the architecture declines to ask it for one, and the contract gives it nowhere to put one. The system prompt supplies a code that has already been determined. The conversation carries no request to identify an error type.</p>
+
+    <p>The response contract does carry structure — the control tokens described in Section 6 — so the claim must be stated precisely rather than as "text only." <strong>Every token is an interaction-control signal; none is a classification.</strong> They request a grid demonstration, offer an interpretation list, mark the item resolved, or mark the session dismissed. There is no token by which the model could assert a misconception, and the <code>code</code> field in the response payload is the client's own code echoed back for correlation — it is copied from the request, never read from the generation. A model response that contradicted the detected code would change no code, be stored as no diagnosis, and be read by no consumer.</p>
 
     <p>The constraint is what buys the properties the system depends on: reproducible diagnosis, auditable rules, regression-testable tutoring behavior, and a classification step that can be verified without invoking a model at all. A system in which the model classifies has none of these, regardless of how well the model classifies.</p>
 
@@ -1187,11 +1254,7 @@ dy = plotted_y - target_y
     <p class="eyebrow">Section 8</p>
     <h2>Prior Art Search Notes</h2>
 
-    <p>The publications below were reviewed during the design of this system. For each, the distinguishing factor is stated with respect to the architecture disclosed above — principally the separation of deterministic classification from generative scaffolding, the authoring-time marker graph, and the absence of any historical student data requirement.</p>
-
-    <div class="callout">
-      <p><strong>To be completed before publication.</strong> Populate the table below from the prior art search notes. Each row should carry the publication number, the title, and a specific distinguishing factor — not a general statement of difference. Delete this callout once the table is filled.</p>
-    </div>
+    <p>The publication below is the nearest art identified to date. The distinguishing factors are stated with respect to the architecture disclosed above — principally the separation of deterministic classification from generative scaffolding, the authoring-time marker graph, and the absence of any historical student data requirement in the diagnostic path.</p>
 
     <div class="tbl-scroll">
       <table>
@@ -1200,33 +1263,38 @@ dy = plotted_y - target_y
         </thead>
         <tbody>
           <tr>
-            <td class="mono"><span class="ph">[PUB NO.]</span></td>
-            <td><span class="ph">[TITLE]</span></td>
-            <td><span class="ph">[DISTINGUISHING FACTORS]</span></td>
-          </tr>
-          <tr>
-            <td class="mono"><span class="ph">[PUB NO.]</span></td>
-            <td><span class="ph">[TITLE]</span></td>
-            <td><span class="ph">[DISTINGUISHING FACTORS]</span></td>
-          </tr>
-          <tr>
-            <td class="mono"><span class="ph">[PUB NO.]</span></td>
-            <td><span class="ph">[TITLE]</span></td>
-            <td><span class="ph">[DISTINGUISHING FACTORS]</span></td>
+            <td class="mono">US 2025/0348966 A1</td>
+            <td>System and Method for Transformer-based Student Performance Prediction and Reasoning-Enhanced Intervention Planning for Objective Assessment of Learning Outcomes</td>
+            <td>
+              <p><strong>Object of the inference.</strong> The reference infers a <em>predicted future performance outcome</em>. Hegemon infers <em>the procedural error present in a response the student has already submitted</em>. These are different inferential targets, not different accuracies at the same target: a Hegemon diagnosis makes no claim about what the student will do next, and a performance prediction identifies no specific error to scaffold against.</p>
+              <p><strong>Classification technology.</strong> The reference classifies with a transformer. Hegemon's classification stage has no model, no parameters, no weights, and no training procedure — it is an ordered set of algebraic comparisons on four integers (Section 5), exhaustively enumerable over the finite grid.</p>
+              <p><strong>Data requirement.</strong> Transformer-based performance prediction is a function of accumulated learner history; the forecast is definitionally a function of the record. Hegemon's diagnostic path reads no stored record of any kind — its inputs are the target coordinate and the plotted coordinate for the single item in front of the student (Section 7).</p>
+              <p><strong>Basis of the intervention.</strong> The reference plans an intervention from a predicted outcome. Hegemon selects scaffolding from a named misconception code drawn from a closed, published taxonomy (Section 4), so the intervention is traceable to an identified error rather than to a risk estimate.</p>
+              <p><strong>Role of the generative model.</strong> Hegemon's language model is architecturally barred from classifying: it receives an already-determined code and returns a single scaffolding turn, and no field in the response contract carries a diagnosis (Section 7).</p>
+              <p><strong>Instructional-content instrumentation.</strong> No counterpart to the authoring-time marker graph — non-rendering topic, prerequisite, and likely-misconception metadata embedded in the lesson and read from scroll position at activation (Section 3).</p>
+            </td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <h3>Recurring distinguishing factors</h3>
+    <div class="callout">
+      <p><strong>On the axis of distinction.</strong> "Predictive versus deterministic" conflates two independent separations, and stating them separately is stronger than stating either alone. <em>Predictive</em> contrasts with <em>retrospective</em> — whether the system infers a future outcome or classifies an action already taken. <em>Learned</em> contrasts with <em>rule-based</em> — whether the inference comes from trained parameters or from fixed logic. The reference is predictive <em>and</em> learned; Hegemon is retrospective <em>and</em> rule-based. Each separation stands on its own: a rule-based predictor and a learned retrospective classifier would both be distinct from Hegemon, and for different reasons.</p>
+    </div>
 
-    <p>Across the categories reviewed, the same three separations recur as points of distinction. They are recorded here as the framework against which each publication above should be assessed:</p>
+    <h3>Framework for assessing further references</h3>
+
+    <p>Three separations recur as points of distinction and are recorded here as the framework against which additional references should be assessed:</p>
 
     <ol>
-      <li><strong>Classification technology.</strong> Systems that classify student error with a trained model — statistical, neural, or LLM-based — differ from a system whose classification stage is a deterministic rule set with no parameters and no training procedure (Section 5).</li>
-      <li><strong>Data requirement.</strong> Systems whose diagnosis is a function of accumulated student history differ from a system whose diagnosis is a function of a single observed response and the target it is compared against, with no repository and no longitudinal record (Section 7).</li>
-      <li><strong>Content annotation and its use.</strong> Systems that infer instructional structure by scanning content at runtime, or that require the student to self-report the locus of confusion, differ from a system in which the concept graph — topic, prerequisites, and likely misconceptions — is embedded in the instructional content at authoring time and read from scroll position at activation (Section 3).</li>
+      <li><strong>Object of the inference.</strong> Systems whose output is a forecast, risk score, mastery estimate, or completion probability differ from a system whose output names the specific procedural error in one observed response.</li>
+      <li><strong>Classification technology and data requirement.</strong> Systems that classify with trained parameters — statistical, neural, transformer, or LLM-based — and that therefore require training data or accumulated learner history differ from a system whose classification stage is a deterministic rule set requiring neither.</li>
+      <li><strong>Content annotation and its use.</strong> Systems that infer instructional structure by scanning content at runtime, or that require the student to self-report the locus of confusion, differ from a system in which the concept graph — topic, prerequisites, and likely misconceptions — is embedded in the instructional content at authoring time and read from scroll position at activation.</li>
     </ol>
+
+    <div class="callout">
+      <p><strong>Scope of this section.</strong> The analysis above is drawn from the reference's published title and abstract-level subject matter and has not been assessed against its issued or pending claims. It records the applicant's contention as to distinction; it is not a legal opinion and is not a representation that the search is complete.</p>
+    </div>
   </section>
 
   <!-- ============================= 9 ============================= -->
@@ -1250,7 +1318,7 @@ dy = plotted_y - target_y
           </tr>
           <tr>
             <td class="mono">Disclosure published</td>
-            <td><span class="ph">[PUBLICATION DATE]</span></td>
+            <td>July 13, 2026</td>
           </tr>
           <tr>
             <td class="mono">Internet Archive</td>
@@ -1258,7 +1326,7 @@ dy = plotted_y - target_y
           </tr>
           <tr>
             <td class="mono">LinkedIn disclosure</td>
-            <td><span class="ph">[LINKEDIN POST URL]</span></td>
+            <td><a href="https://www.linkedin.com/feed/update/urn:li:activity:7482494080535404544/">linkedin.com/feed/update/urn:li:activity:7482494080535404544</a></td>
           </tr>
         </tbody>
       </table>
@@ -1276,7 +1344,8 @@ dy = plotted_y - target_y
           <tr><td class="mono">src/plotting-grid.html</td><td>Student-facing practice grid; source of all detection inputs</td></tr>
           <tr><td class="mono">src/js/misconception-detection.js</td><td>Deterministic detector; <code>detectMisconception(record)</code> → code or <code>null</code></td></tr>
           <tr><td class="mono">src/js/marker-reader.js</td><td>Reads <code>hg-marker</code> elements; packages bot context; persists to <code>sessionStorage</code></td></tr>
-          <tr><td class="mono">src/js/hegemon-bot.js</td><td>Bot client; request assembly and conversation state</td></tr>
+          <tr><td class="mono">src/js/hegemon-bot.js</td><td>Dialogue client; request assembly, conversation state, control-token and escalation rendering</td></tr>
+          <tr><td class="mono">src/js/practice-modal.js</td><td>Practice session; incorrect-response counter and the two-error activation threshold</td></tr>
           <tr><td class="mono">functions/index.js</td><td>Firebase Cloud Function proxy; rate limiting, validation, system prompt assembly</td></tr>
           <tr><td class="mono">docs/scaffolding-contract.md</td><td>Single source of truth for scaffolding input/output rules</td></tr>
           <tr><td class="mono">docs/misconception-taxonomy.md</td><td>Full MC taxonomy with diagnostic rules and scaffolding goals</td></tr>
@@ -1288,7 +1357,9 @@ dy = plotted_y - target_y
 
     <h3>Status of the implementation</h3>
 
-    <p>The system described here is a working proof of concept, not a shipped product. The detection layer, marker system, proxy, and scaffolding contract are implemented and tested as described. The scope is a single lesson: four quadrants, integer coordinates, grid extent −5..5. Adaptive item sequencing, reflection tasks, scale and interval errors, and machine-learned classification of free-text responses are documented as out of scope for this demonstration and are not implemented. This disclosure describes the architecture as built; where a capability is anticipated rather than present, it is identified as such in the section that discusses it.</p>
+    <p>The system described here is a working proof of concept, not a shipped product. Implemented and operating as described: the deterministic detection layer with its fixed evaluation order and unclassified route; the non-rendering marker system with monotonic tracking and cross-page persistence; the proxy with rate limiting, validation, server-side prompt assembly, and control-token extraction; the three activation routes and the two-error threshold gate; the docked non-modal panel with live-grid demonstration; and terminal escalation to a human instructor.</p>
+
+    <p>The scope is a single lesson: four quadrants, integer coordinates, grid extent −5..5. <strong>Not implemented, and not claimed:</strong> any machine-learned or transformer-based classifier; adaptive item sequencing, mastery modeling, or learner profiles persisted across sessions; reflection-task handling; non-unit grid intervals; subject domains other than the coordinate plane; and any multi-tenant, roster, or teacher-dashboard architecture. This disclosure describes the architecture as built; where a capability is anticipated rather than present — free-text classification in Section 5 is the principal case — it is identified as such in the section that discusses it.</p>
   </section>
 
 </main>
